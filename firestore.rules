@@ -1,0 +1,102 @@
+// Firestore Security Rules — da incollare in Firebase Console →
+// Firestore Database → Regole, oppure da pubblicare con la Firebase CLI.
+//
+// Stesso pattern usato nella versione Supabase: lettura per chiunque sia
+// autenticato, scrittura di registrazioni operative libera per chi è
+// autenticato, modifica di configurazione/approvazione riservata al ruolo
+// "responsabile".
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function autenticato() {
+      return request.auth != null;
+    }
+
+    function ruolo() {
+      return get(/databases/$(database)/documents/profili/$(request.auth.uid)).data.ruolo;
+    }
+
+    function eResponsabile() {
+      return autenticato() && ruolo() == 'responsabile';
+    }
+
+    // ---- profili ----
+    match /profili/{uid} {
+      allow read: if autenticato() && (request.auth.uid == uid || eResponsabile());
+      allow write: if false; // i profili si creano solo a mano dalla console, vedi README
+    }
+
+    // ---- configurazione: lettura libera, scrittura riservata al responsabile ----
+    match /apparecchiature/{id} {
+      allow read: if autenticato();
+      allow write: if eResponsabile();
+    }
+    match /piano_pulizie/{id} {
+      allow read: if autenticato();
+      allow write: if eResponsabile();
+    }
+    match /procedure_approvate/{id} {
+      allow read: if autenticato();
+      allow write: if eResponsabile();
+    }
+
+    // ---- registrazioni operative: lettura e scrittura per chi è autenticato ----
+    match /rilevazioni_temperatura/{id} {
+      allow read: if autenticato();
+      allow create: if autenticato() && request.resource.data.registrato_da == request.auth.uid;
+      allow update, delete: if false; // le registrazioni HACCP non si modificano né si cancellano
+    }
+    match /registrazioni_processo/{id} {
+      allow read: if autenticato();
+      allow create: if autenticato() && request.resource.data.registrato_da == request.auth.uid;
+      allow update, delete: if false;
+    }
+    match /registrazioni_pulizia/{id} {
+      allow read: if autenticato();
+      allow create: if autenticato() && request.resource.data.registrato_da == request.auth.uid;
+      allow update, delete: if false;
+    }
+    match /non_conformita/{id} {
+      allow read: if autenticato();
+      allow create: if autenticato() && request.resource.data.aperto_da == request.auth.uid;
+      allow update: if autenticato(); // per poterle chiudere/aggiornare con esito e verifica
+      allow delete: if false;
+    }
+    match /ricevimenti/{id} {
+      allow read: if autenticato();
+      allow create: if autenticato() && request.resource.data.registrato_da == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // ---- prodotti, fornitori, schede HACCP: lettura libera, scrittura per autenticati ----
+    match /prodotti/{id} {
+      allow read: if autenticato();
+      allow write: if autenticato();
+    }
+    match /fornitori/{id} {
+      allow read: if autenticato();
+      allow write: if autenticato();
+    }
+    match /schede_haccp/{id} {
+      allow read: if autenticato();
+      allow create: if autenticato();
+      // l'approvazione (campo stato = 'approvata') resta riservata al responsabile
+      allow update: if autenticato() && (
+        request.resource.data.stato != 'approvata' || eResponsabile()
+      );
+      allow delete: if false;
+    }
+    match /documenti/{id} {
+      allow read: if autenticato();
+      allow write: if autenticato();
+    }
+    match /audit_log/{id} {
+      allow read: if eResponsabile();
+      allow create: if autenticato();
+      allow update, delete: if false;
+    }
+  }
+}
