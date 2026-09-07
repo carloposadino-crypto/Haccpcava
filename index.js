@@ -20,6 +20,9 @@ export async function renderControlli(container, profilo) {
   });
 
   const content = container.querySelector('#controlli-content');
-  if (sottoTab === 'temperature') await renderTemperature(content, profilo);
-  else await renderRegistro(content, profilo);
+  if (sottoTab === 'temperature') {
+    await renderTemperature(content, profilo);
+  } else {
+    await renderRegistro(content, profilo);
+  }
 }
