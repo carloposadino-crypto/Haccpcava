@@ -8,8 +8,8 @@
 // Convenzione dei campi in procedure_approvate.parametri (mappa):
 //   temperatura_min_c, temperatura_max_c, tempo_min_min, tempo_max_min
 
-import { aggiungi, leggiTutti, toData, inizioEFineGiorno, oggiISO, where, orderBy } from '../../lib/store.js';
-import { segnalaScrittura } from '../../lib/sync-status.js';
+import { aggiungi, leggiTutti, toData, inizioEFineGiorno, oggiISO, where, orderBy } from './store.js';
+import { segnalaScrittura } from './sync-status.js';
 
 const TIPI = [
   ['cbt', 'Cottura CBT'],
