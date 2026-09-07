@@ -1,5 +1,5 @@
-import { aggiungi, leggiTutti, toData, inizioEFineGiorno, oggiISO, where, orderBy } from '../../lib/store.js';
-import { segnalaScrittura } from '../../lib/sync-status.js';
+import { aggiungi, leggiTutti, toData, inizioEFineGiorno, oggiISO, where, orderBy } from './store.js';
+import { segnalaScrittura } from './sync-status.js';
 
 function calcolaEsito(apparecchiatura, valore) {
   if (apparecchiatura.tipo === 'freezer') {
