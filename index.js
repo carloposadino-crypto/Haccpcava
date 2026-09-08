@@ -16,187 +16,97 @@ function renderLayout(contentHtml) {
   if (!root) return;
 
   root.innerHTML = `
-    <div class="app-container">
-      <header class="app-header">
-        <h1>La Cava · HACCP</h1>
-        <button class="btn-anomaly" id="global-anomaly-btn" title="Segnala Anomalia">!</button>
+    <div class="layout">
+      <header class="header">
+        <h1>La Cava dei Vini - HACCP</h1>
+        <p class="subtitle">Registro Digitale Autocontrollo</p>
       </header>
       
-      <main id="tab-content" style="padding-bottom: 70px;">
+      <nav class="nav-bar">
+        <button class="nav-btn ${currentTab === 'oggi' ? 'active' : ''}" onclick="window.switchTab('oggi')">Oggi</button>
+        <button class="nav-btn ${currentTab === 'temperature' ? 'active' : ''}" onclick="window.switchTab('temperature')">Temperature</button>
+        <button class="nav-btn ${currentTab === 'registro' ? 'active' : ''}" onclick="window.switchTab('registro')">Registro</button>
+        <button class="nav-btn ${currentTab === 'pulizie' ? 'active' : ''}" onclick="window.switchTab('pulizie')">Pulizie</button>
+        <button class="nav-btn ${currentTab === 'anomalie' ? 'active' : ''}" onclick="window.switchTab('anomalie')">Anomalie</button>
+        <button class="nav-btn ${currentTab === 'prodotti' ? 'active' : ''}" onclick="window.switchTab('prodotti')">Prodotti</button>
+        <button class="nav-btn ${currentTab === 'ricevimento' ? 'active' : ''}" onclick="window.switchTab('ricevimento')">Ricevimento</button>
+        <button class="nav-btn ${currentTab === 'storico' ? 'active' : ''}" onclick="window.switchTab('storico')">Storico</button>
+      </nav>
+
+      <main class="main-content">
         ${contentHtml}
       </main>
     </div>
-
-    <nav class="bottom-nav" style="position:fixed; bottom:0; left:0; right:0; display:flex; justify-content:space-around; background:#1a1614; padding:12px; border-top:1px solid #3d352e; z-index:999;">
-      <button class="nav-item ${currentTab === 'oggi' ? 'active' : ''}" data-tab="oggi" style="background:none; border:none; color:${currentTab === 'oggi' ? '#d4a373' : '#aaa'}; font-weight:bold; cursor:pointer;">Oggi</button>
-      <button class="nav-item ${currentTab === 'temperature' ? 'active' : ''}" data-tab="temperature" style="background:none; border:none; color:${currentTab === 'temperature' ? '#d4a373' : '#aaa'}; font-weight:bold; cursor:pointer;">Temp</button>
-      <button class="nav-item ${currentTab === 'registro' ? 'active' : ''}" data-tab="registro" style="background:none; border:none; color:${currentTab === 'registro' ? '#d4a373' : '#aaa'}; font-weight:bold; cursor:pointer;">Registro</button>
-      <button class="nav-item ${currentTab === 'pulizie' ? 'active' : ''}" data-tab="pulizie" style="background:none; border:none; color:${currentTab === 'pulizie' ? '#d4a373' : '#aaa'}; font-weight:bold; cursor:pointer;">Pulizie</button>
-      <button class="nav-item ${currentTab === 'altro' ? 'active' : ''}" data-tab="altro" style="background:none; border:none; color:${currentTab === 'altro' ? '#d4a373' : '#aaa'}; font-weight:bold; cursor:pointer;">Altro</button>
-    </nav>
   `;
-
-  document.getElementById('global-anomaly-btn').addEventListener('click', () => {
-    apriModalAnomalia(() => switchTab(currentTab));
-  });
-
-  document.querySelectorAll('.nav-item').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      currentTab = e.currentTarget.getAttribute('data-tab');
-      switchTab(currentTab);
-    });
-  });
 }
 
-async function renderOggi() {
-  const html = `
-    <section class="card">
-      <h2>Stato Controlli di Oggi</h2>
-      
-      <div class="dashboard-row" onclick="switchTab('temperature')" style="cursor:pointer; display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid #3d352e;">
-        <span class="dashboard-title">Temperature Apparecchiature</span>
-        <span class="dashboard-status" id="dash-temp-status">Caricamento...</span>
+function renderOggiPage() {
+  return `
+    <div class="dashboard">
+      <h2>Panoramica Giornaliera</h2>
+      <p>Benvenuto nel sistema di gestione HACCP de La Cava dei Vini.</p>
+      <div class="cards-grid">
+        <div class="card" onclick="window.switchTab('temperature')">
+          <h3>Temperature</h3>
+          <p>Registra le temperature dei frigo e freezer.</p>
+        </div>
+        <div class="card" onclick="window.switchTab('registro')">
+          <h3>Registro</h3>
+          <p>Compila il registro giornaliero delle attività.</p>
+        </div>
+        <div class="card" onclick="window.switchTab('pulizie')">
+          <h3>Pulizie</h3>
+          <p>Spunta le schede di sanificazione completate.</p>
+        </div>
+        <div class="card" onclick="window.switchTab('anomalie')">
+          <h3>Anomalie</h3>
+          <p>Segnala e gestisci eventuali non conformità.</p>
+        </div>
       </div>
-
-      <div class="dashboard-row" onclick="switchTab('registro')" style="cursor:pointer; display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid #3d352e;">
-        <span class="dashboard-title">Cotture / Abbattimenti / Rigenerazioni</span>
-        <span class="dashboard-status" id="dash-reg-status">Caricamento...</span>
-      </div>
-
-      <div class="dashboard-row" onclick="switchTab('pulizie')" style="cursor:pointer; display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid #3d352e;">
-        <span class="dashboard-title">Pulizie Giornaliere</span>
-        <span class="dashboard-status" id="dash-pulizie-status">Caricamento...</span>
-      </div>
-
-      <div class="dashboard-row" onclick="switchTab('anomalie')" style="cursor:pointer; display:flex; justify-content:space-between; padding:12px 0;">
-        <span class="dashboard-title">Anomalie Aperte</span>
-        <span class="dashboard-status" id="dash-anomalie-status">Caricamento...</span>
-      </div>
-    </section>
+    </div>
   `;
+}
+
+export function switchTab(tabName) {
+  currentTab = tabName;
+  let html = '';
+
+  switch (tabName) {
+    case 'oggi':
+      html = renderOggiPage();
+      break;
+    case 'temperature':
+      html = renderTemperaturePage();
+      break;
+    case 'registro':
+      html = renderRegistroPage();
+      break;
+    case 'pulizie':
+      html = renderPuliziePage();
+      break;
+    case 'anomalie':
+      html = renderAnomaliePage();
+      break;
+    case 'prodotti':
+      html = renderProdottiPage();
+      break;
+    case 'ricevimento':
+      html = renderRicezioniPage();
+      break;
+    case 'storico':
+      html = renderStoricoPage();
+      break;
+    default:
+      html = renderOggiPage();
+  }
+
   renderLayout(html);
-
-  const oggi = new Date().toISOString().split('T')[0];
-
-  try {
-    const temps = await getTemperature();
-    const rilevazioniOggi = temps.filter(t => t.timestamp && t.timestamp.startsWith(oggi));
-    const statusTemp = document.getElementById('dash-temp-status');
-    if (statusTemp) {
-      statusTemp.textContent = `${rilevazioniOggi.length}/6 verificate`;
-      if (rilevazioniOggi.length === 6) statusTemp.style.color = '#2a9d8f';
-    }
-  } catch (e) {
-    const statusTemp = document.getElementById('dash-temp-status');
-    if (statusTemp) statusTemp.textContent = 'Da verificare';
-  }
-
-  try {
-    const processi = await getRegistro();
-    const processiOggi = processi.filter(p => p.timestamp && p.timestamp.startsWith(oggi));
-    const statusReg = document.getElementById('dash-reg-status');
-    if (statusReg) {
-      statusReg.textContent = `${processiOggi.length} registrate`;
-      if (processiOggi.length > 0) statusReg.style.color = '#2a9d8f';
-    }
-  } catch (e) {
-    const statusReg = document.getElementById('dash-reg-status');
-    if (statusReg) statusReg.textContent = '0 registrate';
-  }
-
-  try {
-    const pulizieSnap = await getDocs(query(collection(db, "pulizie")));
-    const pulizieOggi = pulizieSnap.docs.map(d => d.data()).filter(p => p.timestamp && p.timestamp.startsWith(oggi));
-    const statusPulizio = document.getElementById('dash-pulizie-status');
-    if (statusPulizio) {
-      statusPulizio.textContent = `${pulizieOggi.length} completate`;
-      if (pulizieOggi.length >= 3) statusPulizio.style.color = '#2a9d8f';
-    }
-  } catch (e) {
-    const statusPulizio = document.getElementById('dash-pulizie-status');
-    if (statusPulizio) statusPulizio.textContent = 'In corso';
-  }
-
-  try {
-    const anomalieSnap = await getDocs(query(collection(db, "anomalie")));
-    const aperte = anomalieSnap.docs.map(d => d.data()).filter(a => a.stato === 'Aperta');
-    const statusAno = document.getElementById('dash-anomalie-status');
-    if (statusAno) {
-      statusAno.textContent = aperte.length === 0 ? 'Nessuna' : `${aperte.length} aperte`;
-      statusAno.style.color = aperte.length === 0 ? '#2a9d8f' : '#e63946';
-    }
-  } catch (e) {
-    const statusAno = document.getElementById('dash-anomalie-status');
-    if (statusAno) statusAno.textContent = '0 aperte';
-  }
 }
 
-function renderAltroMenu() {
-  renderLayout(`
-    <section class="card">
-      <h2>Funzioni Aggiuntive</h2>
-      <div style="display:flex; flex-direction:column; gap:10px; margin-top:12px;">
-        <button id="btn-sub-prodotti" style="padding:14px; background:#2a2420; color:#fff; border:1px solid #3d352e; border-radius:6px; font-size:15px; text-align:left; cursor:pointer;">
-          📦 Anagrafica Prodotti e Allergeni
-        </button>
-        <button id="btn-sub-ricezioni" style="padding:14px; background:#2a2420; color:#fff; border:1px solid #3d352e; border-radius:6px; font-size:15px; text-align:left; cursor:pointer;">
-          🚚 Ricevimento Merci e Forniture
-        </button>
-        <button id="btn-sub-storico" style="padding:14px; background:#2a2420; color:#fff; border:1px solid #3d352e; border-radius:6px; font-size:15px; text-align:left; cursor:pointer;">
-          📋 Storico Registrazioni e Export PDF
-        </button>
-        <button id="btn-sub-anomalie" style="padding:14px; background:#2a2420; color:#fff; border:1px solid #3d352e; border-radius:6px; font-size:15px; text-align:left; cursor:pointer;">
-          ⚠️ Registro Anomalie Aperte
-        </button>
-      </div>
-    </section>
-  `);
+// ESPOSIZIONE GLOBALE PER RISOLVERE L'ERRORE DI SWITCHTAB
+window.switchTab = switchTab;
 
-  document.getElementById('btn-sub-prodotti').addEventListener('click', () => {
-    renderLayout('<div id="tab-content"></div>');
-    renderProdottiPage();
-  });
-  document.getElementById('btn-sub-ricezioni').addEventListener('click', () => {
-    renderLayout('<div id="tab-content"></div>');
-    renderRicezioniPage();
-  });
-  document.getElementById('btn-sub-storico').addEventListener('click', () => {
-    renderLayout('<div id="tab-content"></div>');
-    renderStoricoPage();
-  });
-  document.getElementById('btn-sub-anomalie').addEventListener('click', () => {
-    switchTab('anomalie');
-  });
-}
-
-function switchTab(tab) {
-  currentTab = tab;
-  
-  if (tab === 'oggi') {
-    renderOggi();
-  } else if (tab === 'temperature') {
-    renderLayout('<div id="tab-content"></div>');
-    renderTemperaturePage(() => switchTab('oggi'));
-  } else if (tab === 'registro') {
-    renderLayout('<div id="tab-content"></div>');
-    renderRegistroPage(() => switchTab('oggi'));
-  } else if (tab === 'pulizie') {
-    renderLayout('<div id="tab-content"></div>');
-    renderPuliziePage(() => switchTab('oggi'));
-  } else if (tab === 'anomalie') {
-    renderLayout('<div id="tab-content"></div>');
-    renderAnomaliePage();
-  } else if (tab === 'altro') {
-    renderAltroMenu();
-  }
-}
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => switchTab('oggi'));
-} else {
+// Inizializzazione dell'applicazione
+document.addEventListener('DOMContentLoaded', () => {
   switchTab('oggi');
-}
-
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').catch(() => {});
-}
+});
