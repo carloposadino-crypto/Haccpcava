@@ -1,105 +1,123 @@
-import { addRegistro, getRegistro } from './store.js';
+import { renderTemperaturePage } from './temperature.js';
+import { renderRegistroPage } from './registro.js';
+import { getTemperature, getRegistro } from './store.js';
 
-export const TIPOLOGIE_PROCESSO = [
-  { id: 'cbt', nome: 'Cottura CBT', minTemp: 55, maxTemp: 90 },
-  { id: 'abbattimento', nome: 'Abbattimento', minTemp: -40, maxTemp: 3 },
-  { id: 'rigenerazione', nome: 'Rigenerazione', minTemp: 65, maxTemp: 100 }
-];
+let currentTab = 'oggi';
 
-export function renderRegistroPage(onSave) {
-  const appContainer = document.getElementById('tab-content');
-  if (!appContainer) return;
+function renderLayout(contentHtml) {
+  const root = document.getElementById('root');
+  if (!root) return;
 
-  appContainer.innerHTML = `
-    <section class="card">
-      <h2>Controlli → Registro Processi</h2>
-      <form id="process-form" class="form-group" style="display: flex; flex-direction: column; gap: 12px;">
-        <div>
-          <label style="font-size: 13px; color: #d4a373; display: block; margin-bottom: 4px;">Tipo Processo</label>
-          <select name="tipo" id="process-tipo" style="width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #443c36; background: #fff; color: #1a1614; font-size: 15px;">
-            ${TIPOLOGIE_PROCESSO.map(p => `<option value="${p.id}">${p.nome}</option>`).join('')}
-          </select>
-        </div>
+  root.innerHTML = `
+    <div class="app-container">
+      <header class="app-header">
+        <h1>La Cava · HACCP</h1>
+        <button class="btn-anomaly" onclick="alert('Segnalazione anomalia')" title="Segnala Anomalia">!</button>
+      </header>
+      
+      <main id="tab-content">
+        ${contentHtml}
+      </main>
+    </div>
 
-        <div>
-          <label style="font-size: 13px; color: #d4a373; display: block; margin-bottom: 4px;">Prodotto / Lotto</label>
-          <input type="text" name="prodotto" placeholder="Es. Petto d'anatra - Batch #12" required>
-        </div>
-
-        <div>
-          <label style="font-size: 13px; color: #d4a373; display: block; margin-bottom: 4px;">Temperatura Raggiunta (°C)</label>
-          <input type="number" step="0.1" name="valore" placeholder="°C al cuore" required>
-        </div>
-
-        <div>
-          <label style="font-size: 13px; color: #d4a373; display: block; margin-bottom: 4px;">Note / Procedura collegata</label>
-          <textarea name="note" placeholder="Dettagli tempi, lotto o procedura..."></textarea>
-        </div>
-
-        <button type="submit" class="btn">Salva Registrazione Processo</button>
-      </form>
-    </section>
-
-    <section class="card">
-      <h2>Registrazioni di Oggi</h2>
-      <div id="lista-processi-oggi">Caricamento...</div>
-    </section>
+    <nav class="bottom-nav">
+      <button class="nav-item ${currentTab === 'oggi' ? 'active' : ''}" data-tab="oggi">Oggi</button>
+      <button class="nav-item ${currentTab === 'temperature' ? 'active' : ''}" data-tab="temperature">Temp</button>
+      <button class="nav-item ${currentTab === 'registro' ? 'active' : ''}" data-tab="registro">Registro</button>
+      <button class="nav-item ${currentTab === 'pulizie' ? 'active' : ''}" data-tab="pulizie">Pulizie</button>
+      <button class="nav-item ${currentTab === 'altro' ? 'active' : ''}" data-tab="altro">Altro</button>
+    </nav>
   `;
 
-  const form = document.getElementById('process-form');
-  if (form) {
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const formData = new FormData(form);
-      const tipoId = formData.get('tipo');
-      const valore = parseFloat(formData.get('valore'));
-      const tipoObj = TIPOLOGIE_PROCESSO.find(t => t.id === tipoId);
-
-      let esito = 'Senza giudizio automatico';
-      if (tipoObj && !isNaN(valore)) {
-        esito = (valore >= tipoObj.minTemp && valore <= tipoObj.maxTemp) ? 'Conforme' : 'Fuori limite';
-      }
-
-      const data = {
-        tipo: tipoObj ? tipoObj.nome : tipoId,
-        prodotto: formData.get('prodotto'),
-        valore: valore,
-        esito: esito,
-        note: formData.get('note'),
-        timestamp: new Date().toISOString()
-      };
-
-      await addRegistro(data);
-      alert(`Processo registrato: ${data.tipo} - ${esito}`);
-      if (onSave) onSave();
+  document.querySelectorAll('.nav-item').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      currentTab = e.currentTarget.getAttribute('data-tab');
+      switchTab(currentTab);
     });
-  }
-
-  caricaProcessiOggi();
+  });
 }
 
-async function caricaProcessiOggi() {
-  const container = document.getElementById('lista-processi-oggi');
-  if (!container) return;
+async function renderOggi() {
+  const html = `
+    <section class="card">
+      <h2>Stato Controlli di Oggi</h2>
+      
+      <div class="dashboard-row" onclick="switchTab('temperature')">
+        <span class="dashboard-title">Temperature Apparecchiature</span>
+        <span class="dashboard-status" id="dash-temp-status">Caricamento...</span>
+      </div>
+
+      <div class="dashboard-row" onclick="switchTab('registro')">
+        <span class="dashboard-title">Cotture / Abbattimenti / Rigenerazioni</span>
+        <span class="dashboard-status" id="dash-reg-status">Caricamento...</span>
+      </div>
+
+      <div class="dashboard-row" onclick="switchTab('pulizie')">
+        <span class="dashboard-title">Pulizie Giornaliere</span>
+        <span class="dashboard-status">In corso</span>
+      </div>
+
+      <div class="dashboard-row" onclick="switchTab('anomalie')">
+        <span class="dashboard-title">Anomalie Aperte</span>
+        <span class="dashboard-status" style="color: #2a9d8f;">Nessuna</span>
+      </div>
+    </section>
+  `;
+  renderLayout(html);
+
+  const oggi = new Date().toISOString().split('T')[0];
 
   try {
-    const dati = await getRegistro();
-    const oggi = new Date().toISOString().split('T')[0];
-    const diOggi = dati.filter(r => r.timestamp && r.timestamp.startsWith(oggi));
-
-    if (diOggi.length === 0) {
-      container.innerHTML = '<p class="empty-text">Nessun processo registrato oggi.</p>';
-      return;
+    const temps = await getTemperature();
+    const rilevazioniOggi = temps.filter(t => t.timestamp && t.timestamp.startsWith(oggi));
+    const statusTemp = document.getElementById('dash-temp-status');
+    if (statusTemp) {
+      statusTemp.textContent = `${rilevazioniOggi.length}/6 verificate`;
+      if (rilevazioniOggi.length === 6) statusTemp.style.color = '#2a9d8f';
     }
-
-    container.innerHTML = diOggi.map(item => `
-      <div class="log-item" style="border-bottom: 1px solid #3d352e; padding: 8px 0;">
-        <span class="log-date" style="color: #d4a373; font-size: 12px;">${new Date(item.timestamp).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })} - ${item.tipo}</span>
-        <div style="font-size: 14px;"><b>${item.prodotto || 'Prodotto'}</b>: ${item.valore}°C (${item.esito})</div>
-        ${item.note ? `<div style="font-size: 12px; color: #aaa;">${item.note}</div>` : ''}
-      </div>
-    `).join('');
   } catch (e) {
-    container.innerHTML = '<p class="error-text">Errore caricamento dati</p>';
+    const statusTemp = document.getElementById('dash-temp-status');
+    if (statusTemp) statusTemp.textContent = 'Da verificare';
   }
+
+  try {
+    const processi = await getRegistro();
+    const processiOggi = processi.filter(p => p.timestamp && p.timestamp.startsWith(oggi));
+    const statusReg = document.getElementById('dash-reg-status');
+    if (statusReg) {
+      statusReg.textContent = `${processiOggi.length} registrate`;
+      if (processiOggi.length > 0) statusReg.style.color = '#2a9d8f';
+    }
+  } catch (e) {
+    const statusReg = document.getElementById('dash-reg-status');
+    if (statusReg) statusReg.textContent = '0 registrate';
+  }
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  
+  if (tab === 'oggi') {
+    renderOggi();
+  } else if (tab === 'temperature') {
+    renderLayout('<div id="tab-content"></div>');
+    renderTemperaturePage(() => switchTab('oggi'));
+  } else if (tab === 'registro') {
+    renderLayout('<div id="tab-content"></div>');
+    renderRegistroPage(() => switchTab('oggi'));
+  } else if (tab === 'pulizie') {
+    renderLayout(`<section class="card"><h2>Pulizie</h2><p style="color:#aaa;">Checklist giornaliera / settimanale in arrivo...</p></section>`);
+  } else if (tab === 'altro') {
+    renderLayout(`<section class="card"><h2>Altro</h2><p style="color:#aaa;">Prodotti, Ricevimento merci, Schede e Storico in arrivo...</p></section>`);
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => switchTab('oggi'));
+} else {
+  switchTab('oggi');
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
 }
