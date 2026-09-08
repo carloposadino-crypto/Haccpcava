@@ -1,4 +1,4 @@
-import { db, collection, addDoc, serverTimestamp } from './firebase.js';
+import { db, collection, addDoc, getDocs, query, where, serverTimestamp } from './firebase.js';
 
 export function renderTemperaturePage(container) {
   const today = new Date().toLocaleDateString('it-IT');
@@ -82,11 +82,13 @@ async function handleSaveTemperatures() {
     await addDoc(collection(db, "temperature"), {
       data: todayStr,
       letture: data,
+      count: Object.keys(data).length,
       timestamp: serverTimestamp()
     });
 
     alert('Temperature registrate con successo su Firebase!');
     form.reset();
+    window.switchTab('oggi');
   } catch (error) {
     console.error("Errore durante il salvataggio:", error);
     alert('Errore nel salvataggio dei dati.');
