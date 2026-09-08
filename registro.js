@@ -1,7 +1,7 @@
-import { getRegistro, addRegistro } from './store.js';
+import { addRegistro } from './store.js';
 import { segnalaScrittura } from './sync-status.js';
 
-export function initRegistro() {
+export function initRegistro(onSuccess) {
   const form = document.getElementById('registro-form');
   if (!form) return;
 
@@ -17,5 +17,6 @@ export function initRegistro() {
     await addRegistro(data);
     segnalaScrittura();
     form.reset();
+    if (onSuccess) onSuccess();
   });
 }
