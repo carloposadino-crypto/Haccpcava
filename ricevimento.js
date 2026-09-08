@@ -11,11 +11,11 @@ export function renderRicezioniPage() {
       <form id="ric-form" class="form-group" style="display: flex; flex-direction: column; gap: 12px;">
         <div>
           <label style="font-size: 13px; color: #d4a373;">Fornitore</label>
-          <input type="text" name="fornitore" placeholder="Es. Carni Piemonte Srl" required style="width:100%; padding:10px; border-radius:6px; border:1px solid #443c36; background:#2a2420; color:#fff;">
+          <input type="text" name="fornitore" placeholder="Es. Fornitore locale" required style="width:100%; padding:10px; border-radius:6px; border:1px solid #443c36; background:#2a2420; color:#fff;">
         </div>
         <div>
           <label style="font-size: 13px; color: #d4a373;">Materia Prima / Lotto</label>
-          <input type="text" name="materia" placeholder="Es. Taglio Vitello - L.9902" required style="width:100%; padding:10px; border-radius:6px; border:1px solid #443c36; background:#2a2420; color:#fff;">
+          <input type="text" name="materia" placeholder="Es. Prodotto - Lotto #1" required style="width:100%; padding:10px; border-radius:6px; border:1px solid #443c36; background:#2a2420; color:#fff;">
         </div>
         <div style="display:flex; gap:10px;">
           <div style="flex:1;">
