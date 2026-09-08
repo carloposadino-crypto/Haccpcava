@@ -13,7 +13,7 @@ async function caricaDati() {
         ? '<p style="color:#aaa; font-size:14px;">Nessuna temperatura registrata.</p>'
         : temps.map(t => `<div style="border-bottom:1px solid #444; padding:8px 0; font-size:14px;"><b>${t.valore}°C</b> - ${t.note || 'Nessuna nota'}</div>`).join('');
     } catch (e) {
-      listTemp.innerHTML = '<p style="color:#ff6b6b; font-size:14px;">Errore caricamento dati</p>';
+      listTemp.innerHTML = `<p style="color:#ff6b6b; font-size:13px; word-break:break-all;"><b>Errore Temp:</b> ${e.message}</p>`;
     }
   }
 
@@ -24,7 +24,7 @@ async function caricaDati() {
         ? '<p style="color:#aaa; font-size:14px;">Nessuna nota registrata.</p>'
         : regs.map(r => `<div style="border-bottom:1px solid #444; padding:8px 0; font-size:14px;"><b>${r.tipo}</b>: ${r.note || ''}</div>`).join('');
     } catch (e) {
-      listReg.innerHTML = '<p style="color:#ff6b6b; font-size:14px;">Errore caricamento dati</p>';
+      listReg.innerHTML = `<p style="color:#ff6b6b; font-size:13px; word-break:break-all;"><b>Errore Reg:</b> ${e.message}</p>`;
     }
   }
 }
