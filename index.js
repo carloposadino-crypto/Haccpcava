@@ -2,6 +2,12 @@ import { initTemperature } from './temperature.js';
 import { initRegistro } from './registro.js';
 import { getTemperature, getRegistro } from './store.js';
 
+function formatData(isoString) {
+  if (!isoString) return '';
+  const d = new Date(isoString);
+  return d.toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
 async function caricaDati() {
   const listTemp = document.getElementById('lista-temperature');
   const listReg = document.getElementById('lista-registro');
@@ -9,9 +15,15 @@ async function caricaDati() {
   if (listTemp) {
     try {
       const temps = await getTemperature();
+      temps.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
       listTemp.innerHTML = temps.length === 0 
         ? '<p style="color:#aaa; font-size:14px;">Nessuna temperatura registrata.</p>'
-        : temps.map(t => `<div style="border-bottom:1px solid #444; padding:8px 0; font-size:14px;"><b>${t.valore}°C</b> - ${t.note || 'Nessuna nota'}</div>`).join('');
+        : temps.map(t => `
+            <div style="border-bottom:1px solid #444; padding:8px 0; font-size:14px;">
+              <span style="color:#D4A373; font-size:12px; display:block;">${formatData(t.timestamp)}</span>
+              <b>${t.valore}°C</b> - ${t.note || 'Nessuna nota'}
+            </div>
+          `).join('');
     } catch (e) {
       listTemp.innerHTML = `<p style="color:#ff6b6b; font-size:13px;">Errore caricamento dati</p>`;
     }
@@ -20,9 +32,15 @@ async function caricaDati() {
   if (listReg) {
     try {
       const regs = await getRegistro();
+      regs.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
       listReg.innerHTML = regs.length === 0 
         ? '<p style="color:#aaa; font-size:14px;">Nessuna nota registrata.</p>'
-        : regs.map(r => `<div style="border-bottom:1px solid #444; padding:8px 0; font-size:14px;"><b>${r.tipo}</b>: ${r.note || ''}</div>`).join('');
+        : regs.map(r => `
+            <div style="border-bottom:1px solid #444; padding:8px 0; font-size:14px;">
+              <span style="color:#D4A373; font-size:12px; display:block;">${formatData(r.timestamp)}</span>
+              <b>${r.tipo}</b>: ${r.note || ''}
+            </div>
+          `).join('');
     } catch (e) {
       listReg.innerHTML = `<p style="color:#ff6b6b; font-size:13px;">Errore caricamento dati</p>`;
     }
@@ -68,6 +86,10 @@ function renderApp() {
   initTemperature(caricaDati);
   initRegistro(caricaDati);
   caricaDati();
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW registration failed: ', err));
+  }
 }
 
 if (document.readyState === 'loading') {
