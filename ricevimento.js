@@ -1,96 +1,95 @@
-// Ricevimento merci: fornitore → prodotto → ricevimento → lotto.
-// Semplificazione: se il prodotto digitato non è ancora in anagrafica e si
-// è offline, il ricevimento viene comunque registrato (prodotto_id vuoto,
-// nome annotato in "note") — meglio salvarlo così che perderlo. Va
-// ricollegato al prodotto verificato in un secondo momento, quando si è
-// online, dalla sezione Prodotti.
-// Nota: la ricerca per nome è un confronto esatto (Firestore non ha un
-// equivalente diretto di "ilike"); un prodotto scritto in modo leggermente
-// diverso genera una nuova voce invece di essere trovato.
+import { db } from './firebase.js';
+import { collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-import { aggiungi, leggiTutti, toData, inizioEFineGiorno, oggiISO, where, limit } from '../../lib/store.js';
-import { segnalaScrittura } from '../../lib/sync-status.js';
-
-function fmtOra(d) {
-  return d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-}
-
-async function trovaOCreaProdotto(nome) {
-  if (!navigator.onLine || !nome) return null;
-  const trovati = await leggiTutti('prodotti', [where('denominazione', '==', nome), limit(1)]);
-  if (trovati.length > 0) return trovati[0].id;
-  return aggiungi('prodotti', { denominazione: nome, fonte: 'manuale', stato_verifica: 'non_verificato', creato_il: new Date() });
-}
-
-export async function renderRicevimento(container, profilo) {
-  const { inizio, fine } = inizioEFineGiorno(oggiISO());
-  const oggi = await leggiTutti('ricevimenti', [where('registrato_il', '>=', inizio), where('registrato_il', '<=', fine)]);
+export function renderRicezioniPage() {
+  const container = document.getElementById('tab-content');
+  if (!container) return;
 
   container.innerHTML = `
-    <div class="card">
-      <label class="field-label">Fornitore</label>
-      <input type="text" id="ric-fornitore" placeholder="Nome fornitore">
-      <label class="field-label">Prodotto</label>
-      <input type="text" id="ric-prodotto" placeholder="Denominazione prodotto">
-      <label class="field-label">Lotto (se presente)</label>
-      <input type="text" id="ric-lotto">
-      <label class="field-label">Scadenza / TMC (se pertinente)</label>
-      <input type="date" id="ric-scadenza">
-      <label class="field-label">Temperatura alla consegna (se pertinente)</label>
-      <input type="number" id="ric-temperatura" step="0.5">
-      <label class="field-label">Conformità</label>
-      <select id="ric-conformita">
-        <option value="true">Conforme</option>
-        <option value="false">Non conforme</option>
-      </select>
-      <label class="field-label">Note</label>
-      <textarea id="ric-note" placeholder="Facoltative"></textarea>
-      <button class="btn btn-primary btn-block" id="ric-salva">Registra ricevimento</button>
-    </div>
-    <p class="section-title">Oggi</p>
-    ${oggi.length === 0 ? '<div class="empty">Nessun ricevimento registrato oggi.</div>' : oggi.map(riga).join('')}
+    <section class="card">
+      <h2>Ricevimento Merci e Forniture</h2>
+      <form id="ric-form" class="form-group" style="display: flex; flex-direction: column; gap: 12px;">
+        <div>
+          <label style="font-size: 13px; color: #d4a373;">Fornitore</label>
+          <input type="text" name="fornitore" placeholder="Es. Carni Piemonte Srl" required style="width:100%; padding:10px; border-radius:6px; border:1px solid #443c36; background:#2a2420; color:#fff;">
+        </div>
+        <div>
+          <label style="font-size: 13px; color: #d4a373;">Materia Prima / Lotto</label>
+          <input type="text" name="materia" placeholder="Es. Taglio Vitello - L.9902" required style="width:100%; padding:10px; border-radius:6px; border:1px solid #443c36; background:#2a2420; color:#fff;">
+        </div>
+        <div style="display:flex; gap:10px;">
+          <div style="flex:1;">
+            <label style="font-size: 13px; color: #d4a373;">Temp. Mezzo (°C)</label>
+            <input type="number" step="0.1" name="temp" placeholder="°C" style="width:100%; padding:10px; border-radius:6px; border:1px solid #443c36; background:#2a2420; color:#fff;">
+          </div>
+          <div style="flex:1;">
+            <label style="font-size: 13px; color: #d4a373;">Esito Controllo</label>
+            <select name="esito" style="width:100%; padding:10px; border-radius:6px; background:#fff; color:#1a1614; font-size:14px;">
+              <option value="Accettato">Accettato</option>
+              <option value="Accettato con Riserva">Accettato con Riserva</option>
+              <option value="Respinto">Respinto</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="btn" style="background:#d4a373; color:#1a1614; border:none; padding:10px; border-radius:6px; font-weight:bold; cursor:pointer;">Registra Ricevimento</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Registro Arrivi</h2>
+      <div id="lista-ricezioni">Caricamento...</div>
+    </section>
   `;
 
-  container.querySelector('#ric-salva').addEventListener('click', async () => {
-    const fornitoreNome = container.querySelector('#ric-fornitore').value.trim();
-    const prodottoNome = container.querySelector('#ric-prodotto').value.trim();
-    if (!prodottoNome) return;
+  document.getElementById('ric-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
 
-    const prodottoId = await trovaOCreaProdotto(prodottoNome);
-    const temperaturaVal = container.querySelector('#ric-temperatura').value;
-    const noteBase = container.querySelector('#ric-note').value.trim();
-    const note = prodottoId ? noteBase : [`Prodotto non collegato: ${prodottoNome}`, noteBase].filter(Boolean).join(' — ');
-
-    await aggiungi('ricevimenti', {
-      fornitore_id: null,
-      fornitore_nome: fornitoreNome || null,
-      prodotto_id: prodottoId,
-      prodotto_nome: prodottoNome,
-      data: oggiISO(),
-      lotto: container.querySelector('#ric-lotto').value.trim() || null,
-      scadenza: container.querySelector('#ric-scadenza').value || null,
-      temperatura: temperaturaVal ? parseFloat(temperaturaVal) : null,
-      conformita: container.querySelector('#ric-conformita').value === 'true',
-      note: note || null,
-      registrato_da: profilo.id,
-      registrato_il: new Date(),
-    });
-    segnalaScrittura();
-    await renderRicevimento(container, profilo);
+    try {
+      await addDoc(collection(db, "ricezioni"), {
+        fornitore: formData.get('fornitore'),
+        materia: formData.get('materia'),
+        temp: parseFloat(formData.get('temp')) || null,
+        esito: formData.get('esito'),
+        timestamp: new Date().toISOString()
+      });
+      alert('Ricevimento merce salvato!');
+      caricaRicezioni();
+      e.target.reset();
+    } catch (err) {
+      alert('Errore nel salvataggio del ricevimento.');
+    }
   });
+
+  caricaRicezioni();
 }
 
-function riga(r) {
-  return `
-    <div class="entry-row">
-      <div class="top">
-        <span class="name">${escapeHtml(r.prodotto_nome || 'Prodotto')}</span>
-        <span class="badge ${r.conformita ? 'ok' : 'bad'}">${r.conformita ? 'Conforme' : 'Non conforme'}</span>
-      </div>
-      <div class="meta">${escapeHtml(r.fornitore_nome || '')}${r.lotto ? ' · lotto ' + escapeHtml(r.lotto) : ''} · ${fmtOra(toData(r.registrato_il))}</div>
-    </div>
-  `;
-}
-function escapeHtml(s) {
-  return (s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+async function caricaRicezioni() {
+  const container = document.getElementById('lista-ricezioni');
+  if (!container) return;
+
+  try {
+    const q = query(collection(db, "ricezioni"), orderBy("timestamp", "desc"));
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) {
+      container.innerHTML = '<p class="empty-text">Nessuna merce registrata.</p>';
+      return;
+    }
+
+    container.innerHTML = snapshot.docs.map(doc => {
+      const r = doc.data();
+      return `
+        <div style="border-bottom: 1px solid #3d352e; padding: 8px 0;">
+          <div style="display:flex; justify-content:space-between;">
+            <strong style="font-size:14px; color:#fff;">${r.fornitore}</strong>
+            <span style="font-size:12px; color:#2a9d8f;">${r.esito}</span>
+          </div>
+          <div style="font-size:12px; color:#aaa;">${r.materia} ${r.temp ? `(${r.temp}°C)` : ''}</div>
+        </div>
+      `;
+    }).join('');
+  } catch (e) {
+    container.innerHTML = '<p class="error-text">Errore caricamento ricevimenti.</p>';
+  }
 }
