@@ -12,16 +12,6 @@
 </head>
 <body>
   <div id="root"><div class="empty">Caricamento...</div></div>
-
-  <script>
-    window.addEventListener('error', function(e) {
-      document.getElementById('root').innerHTML = 
-        '<div style="color:red; background:#fff; padding:20px; font-family:monospace; word-break:break-all;">' +
-        '<b>ERRORE:</b> ' + e.message + '<br><br><b>FILE:</b> ' + e.filename + '<br><br><b>RIGA:</b> ' + e.lineno + 
-        '</div>';
-    });
-  </script>
-
   <script type="module" src="./index.js"></script>
 </body>
 </html>
