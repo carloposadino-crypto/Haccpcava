@@ -8,75 +8,6 @@ import { renderStoricoPage } from './storico.js';
 
 let currentTab = 'oggi';
 
-function executeRender(renderFn, container) {
-  if (typeof renderFn !== 'function') return;
-  const result = renderFn(container);
-  // Se la funzione restituisce una stringa HTML invece di modificare il container, la inseriamo noi
-  if (typeof result === 'string') {
-    container.innerHTML = result;
-  }
-}
-
-function renderLayout() {
-  const root = document.getElementById('root');
-  if (!root) return;
-
-  root.innerHTML = `
-    <div class="layout">
-      <header class="header">
-        <h1>La Cava dei Vini - HACCP</h1>
-        <p class="subtitle">Registro Digitale Autocontrollo</p>
-      </header>
-      
-      <nav class="nav-bar">
-        <button class="nav-btn ${currentTab === 'oggi' ? 'active' : ''}" onclick="window.switchTab('oggi')">Oggi</button>
-        <button class="nav-btn ${currentTab === 'temperature' ? 'active' : ''}" onclick="window.switchTab('temperature')">Temperature</button>
-        <button class="nav-btn ${currentTab === 'registro' ? 'active' : ''}" onclick="window.switchTab('registro')">Registro</button>
-        <button class="nav-btn ${currentTab === 'pulizie' ? 'active' : ''}" onclick="window.switchTab('pulizie')">Pulizie</button>
-        <button class="nav-btn ${currentTab === 'anomalie' ? 'active' : ''}" onclick="window.switchTab('anomalie')">Anomalie</button>
-        <button class="nav-btn ${currentTab === 'prodotti' ? 'active' : ''}" onclick="window.switchTab('prodotti')">Prodotti</button>
-        <button class="nav-btn ${currentTab === 'ricevimento' ? 'active' : ''}" onclick="window.switchTab('ricevimento')">Ricevimento</button>
-        <button class="nav-btn ${currentTab === 'storico' ? 'active' : ''}" onclick="window.switchTab('storico')">Storico</button>
-      </nav>
-
-      <main class="main-content" id="main-container">
-      </main>
-    </div>
-  `;
-
-  const container = document.getElementById('main-container');
-  if (!container) return;
-
-  switch (currentTab) {
-    case 'oggi':
-      container.innerHTML = renderOggiPage();
-      break;
-    case 'temperature':
-      executeRender(renderTemperaturePage, container);
-      break;
-    case 'registro':
-      executeRender(renderRegistroPage, container);
-      break;
-    case 'pulizie':
-      executeRender(renderPuliziePage, container);
-      break;
-    case 'anomalie':
-      executeRender(renderAnomaliePage, container);
-      break;
-    case 'prodotti':
-      executeRender(renderProdottiPage, container);
-      break;
-    case 'ricevimento':
-      executeRender(renderRicezioniPage, container);
-      break;
-    case 'storico':
-      executeRender(renderStoricoPage, container);
-      break;
-    default:
-      container.innerHTML = renderOggiPage();
-  }
-}
-
 function renderOggiPage() {
   return `
     <div class="dashboard">
@@ -104,13 +35,78 @@ function renderOggiPage() {
   `;
 }
 
-export function switchTab(tabName) {
-  currentTab = tabName;
-  renderLayout();
+function renderContent() {
+  const container = document.getElementById('main-content') || document.getElementById('root');
+  if (!container) return;
+
+  // Aggiorna classe active nei pulsanti nav
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.classList.remove('active');
+    if (btn.getAttribute('onclick')?.includes(`'${currentTab}'`)) {
+      btn.classList.add('active');
+    }
+  });
+
+  // Gestione dinamica dei moduli
+  switch (currentTab) {
+    case 'oggi':
+      container.innerHTML = renderOggiPage();
+      break;
+    case 'temperature':
+      if (typeof renderTemperaturePage === 'function') {
+        const res = renderTemperaturePage(container);
+        if (typeof res === 'string') container.innerHTML = res;
+      }
+      break;
+    case 'registro':
+      if (typeof renderRegistroPage === 'function') {
+        const res = renderRegistroPage(container);
+        if (typeof res === 'string') container.innerHTML = res;
+      }
+      break;
+    case 'pulizie':
+      if (typeof renderPuliziePage === 'function') {
+        const res = renderPuliziePage(container);
+        if (typeof res === 'string') container.innerHTML = res;
+      }
+      break;
+    case 'anomalie':
+      if (typeof renderAnomaliePage === 'function') {
+        const res = renderAnomaliePage(container);
+        if (typeof res === 'string') container.innerHTML = res;
+      }
+      break;
+    case 'prodotti':
+      if (typeof renderProdottiPage === 'function') {
+        const res = renderProdottiPage(container);
+        if (typeof res === 'string') container.innerHTML = res;
+      }
+      break;
+    case 'ricevimento':
+      if (typeof renderRicezioniPage === 'function') {
+        const res = renderRicezioniPage(container);
+        if (typeof res === 'string') container.innerHTML = res;
+      }
+      break;
+    case 'storico':
+      if (typeof renderStoricoPage === 'function') {
+        const res = renderStoricoPage(container);
+        if (typeof res === 'string') container.innerHTML = res;
+      }
+      break;
+    default:
+      container.innerHTML = renderOggiPage();
+  }
 }
 
+export function switchTab(tabName) {
+  currentTab = tabName;
+  renderContent();
+}
+
+// Esporta globalmente per gli attributi onclick
 window.switchTab = switchTab;
 
 document.addEventListener('DOMContentLoaded', () => {
-  switchTab('oggi');
+  renderContent();
 });
