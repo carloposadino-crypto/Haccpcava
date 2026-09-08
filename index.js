@@ -1,6 +1,10 @@
 import { renderTemperaturePage } from './temperature.js';
 import { renderRegistroPage } from './registro.js';
+import { renderPuliziePage } from './pulizie.js';
+import { renderAnomaliePage, apriModalAnomalia } from './anomalie.js';
 import { getTemperature, getRegistro } from './store.js';
+import { db } from './firebase.js';
+import { collection, getDocs, query } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 let currentTab = 'oggi';
 
@@ -12,7 +16,7 @@ function renderLayout(contentHtml) {
     <div class="app-container">
       <header class="app-header">
         <h1>La Cava · HACCP</h1>
-        <button class="btn-anomaly" onclick="alert('Segnalazione anomalia')" title="Segnala Anomalia">!</button>
+        <button class="btn-anomaly" id="global-anomaly-btn" title="Segnala Anomalia">!</button>
       </header>
       
       <main id="tab-content">
@@ -28,6 +32,10 @@ function renderLayout(contentHtml) {
       <button class="nav-item ${currentTab === 'altro' ? 'active' : ''}" data-tab="altro">Altro</button>
     </nav>
   `;
+
+  document.getElementById('global-anomaly-btn').addEventListener('click', () => {
+    apriModalAnomalia(() => switchTab(currentTab));
+  });
 
   document.querySelectorAll('.nav-item').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -54,12 +62,12 @@ async function renderOggi() {
 
       <div class="dashboard-row" onclick="switchTab('pulizie')">
         <span class="dashboard-title">Pulizie Giornaliere</span>
-        <span class="dashboard-status">In corso</span>
+        <span class="dashboard-status" id="dash-pulizie-status">Caricamento...</span>
       </div>
 
       <div class="dashboard-row" onclick="switchTab('anomalie')">
         <span class="dashboard-title">Anomalie Aperte</span>
-        <span class="dashboard-status" style="color: #2a9d8f;">Nessuna</span>
+        <span class="dashboard-status" id="dash-anomalie-status">Caricamento...</span>
       </div>
     </section>
   `;
@@ -92,6 +100,32 @@ async function renderOggi() {
     const statusReg = document.getElementById('dash-reg-status');
     if (statusReg) statusReg.textContent = '0 registrate';
   }
+
+  try {
+    const pulizieSnap = await getDocs(query(collection(db, "pulizie")));
+    const pulizieOggi = pulizieSnap.docs.map(d => d.data()).filter(p => p.timestamp && p.timestamp.startsWith(oggi));
+    const statusPulizio = document.getElementById('dash-pulizie-status');
+    if (statusPulizio) {
+      statusPulizio.textContent = `${pulizieOggi.length} completate`;
+      if (pulizieOggi.length >= 3) statusPulizio.style.color = '#2a9d8f';
+    }
+  } catch (e) {
+    const statusPulizio = document.getElementById('dash-pulizie-status');
+    if (statusPulizio) statusPulizio.textContent = 'In corso';
+  }
+
+  try {
+    const anomalieSnap = await getDocs(query(collection(db, "anomalie")));
+    const aperte = anomalieSnap.docs.map(d => d.data()).filter(a => a.stato === 'Aperta');
+    const statusAno = document.getElementById('dash-anomalie-status');
+    if (statusAno) {
+      statusAno.textContent = aperte.length === 0 ? 'Nessuna' : `${aperte.length} aperte`;
+      statusAno.style.color = aperte.length === 0 ? '#2a9d8f' : '#e63946';
+    }
+  } catch (e) {
+    const statusAno = document.getElementById('dash-anomalie-status');
+    if (statusAno) statusAno.textContent = '0 aperte';
+  }
 }
 
 function switchTab(tab) {
@@ -106,7 +140,11 @@ function switchTab(tab) {
     renderLayout('<div id="tab-content"></div>');
     renderRegistroPage(() => switchTab('oggi'));
   } else if (tab === 'pulizie') {
-    renderLayout(`<section class="card"><h2>Pulizie</h2><p style="color:#aaa;">Checklist giornaliera / settimanale in arrivo...</p></section>`);
+    renderLayout('<div id="tab-content"></div>');
+    renderPuliziePage(() => switchTab('oggi'));
+  } else if (tab === 'anomalie') {
+    renderLayout('<div id="tab-content"></div>');
+    renderAnomaliePage();
   } else if (tab === 'altro') {
     renderLayout(`<section class="card"><h2>Altro</h2><p style="color:#aaa;">Prodotti, Ricevimento merci, Schede e Storico in arrivo...</p></section>`);
   }
