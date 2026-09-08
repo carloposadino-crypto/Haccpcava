@@ -4,6 +4,7 @@ import { renderPuliziePage } from './pulizie.js';
 import { renderAnomaliePage, apriModalAnomalia } from './anomalie.js';
 import { renderProdottiPage } from './prodotti.js';
 import { renderRicezioniPage } from './ricevimento.js';
+import { renderStoricoPage } from './storico.js';
 import { getTemperature, getRegistro } from './store.js';
 import { db } from './firebase.js';
 import { collection, getDocs, query } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -21,17 +22,17 @@ function renderLayout(contentHtml) {
         <button class="btn-anomaly" id="global-anomaly-btn" title="Segnala Anomalia">!</button>
       </header>
       
-      <main id="tab-content">
+      <main id="tab-content" style="padding-bottom: 70px;">
         ${contentHtml}
       </main>
     </div>
 
-    <nav class="bottom-nav">
-      <button class="nav-item ${currentTab === 'oggi' ? 'active' : ''}" data-tab="oggi">Oggi</button>
-      <button class="nav-item ${currentTab === 'temperature' ? 'active' : ''}" data-tab="temperature">Temp</button>
-      <button class="nav-item ${currentTab === 'registro' ? 'active' : ''}" data-tab="registro">Registro</button>
-      <button class="nav-item ${currentTab === 'pulizie' ? 'active' : ''}" data-tab="pulizie">Pulizie</button>
-      <button class="nav-item ${currentTab === 'altro' ? 'active' : ''}" data-tab="altro">Altro</button>
+    <nav class="bottom-nav" style="position:fixed; bottom:0; left:0; right:0; display:flex; justify-content:space-around; background:#1a1614; padding:12px; border-top:1px solid #3d352e; z-index:999;">
+      <button class="nav-item ${currentTab === 'oggi' ? 'active' : ''}" data-tab="oggi" style="background:none; border:none; color:${currentTab === 'oggi' ? '#d4a373' : '#aaa'}; font-weight:bold; cursor:pointer;">Oggi</button>
+      <button class="nav-item ${currentTab === 'temperature' ? 'active' : ''}" data-tab="temperature" style="background:none; border:none; color:${currentTab === 'temperature' ? '#d4a373' : '#aaa'}; font-weight:bold; cursor:pointer;">Temp</button>
+      <button class="nav-item ${currentTab === 'registro' ? 'active' : ''}" data-tab="registro" style="background:none; border:none; color:${currentTab === 'registro' ? '#d4a373' : '#aaa'}; font-weight:bold; cursor:pointer;">Registro</button>
+      <button class="nav-item ${currentTab === 'pulizie' ? 'active' : ''}" data-tab="pulizie" style="background:none; border:none; color:${currentTab === 'pulizie' ? '#d4a373' : '#aaa'}; font-weight:bold; cursor:pointer;">Pulizie</button>
+      <button class="nav-item ${currentTab === 'altro' ? 'active' : ''}" data-tab="altro" style="background:none; border:none; color:${currentTab === 'altro' ? '#d4a373' : '#aaa'}; font-weight:bold; cursor:pointer;">Altro</button>
     </nav>
   `;
 
@@ -52,22 +53,22 @@ async function renderOggi() {
     <section class="card">
       <h2>Stato Controlli di Oggi</h2>
       
-      <div class="dashboard-row" onclick="switchTab('temperature')">
+      <div class="dashboard-row" onclick="switchTab('temperature')" style="cursor:pointer; display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid #3d352e;">
         <span class="dashboard-title">Temperature Apparecchiature</span>
         <span class="dashboard-status" id="dash-temp-status">Caricamento...</span>
       </div>
 
-      <div class="dashboard-row" onclick="switchTab('registro')">
+      <div class="dashboard-row" onclick="switchTab('registro')" style="cursor:pointer; display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid #3d352e;">
         <span class="dashboard-title">Cotture / Abbattimenti / Rigenerazioni</span>
         <span class="dashboard-status" id="dash-reg-status">Caricamento...</span>
       </div>
 
-      <div class="dashboard-row" onclick="switchTab('pulizie')">
+      <div class="dashboard-row" onclick="switchTab('pulizie')" style="cursor:pointer; display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid #3d352e;">
         <span class="dashboard-title">Pulizie Giornaliere</span>
         <span class="dashboard-status" id="dash-pulizie-status">Caricamento...</span>
       </div>
 
-      <div class="dashboard-row" onclick="switchTab('anomalie')">
+      <div class="dashboard-row" onclick="switchTab('anomalie')" style="cursor:pointer; display:flex; justify-content:space-between; padding:12px 0;">
         <span class="dashboard-title">Anomalie Aperte</span>
         <span class="dashboard-status" id="dash-anomalie-status">Caricamento...</span>
       </div>
@@ -141,6 +142,9 @@ function renderAltroMenu() {
         <button id="btn-sub-ricezioni" style="padding:14px; background:#2a2420; color:#fff; border:1px solid #3d352e; border-radius:6px; font-size:15px; text-align:left; cursor:pointer;">
           🚚 Ricevimento Merci e Forniture
         </button>
+        <button id="btn-sub-storico" style="padding:14px; background:#2a2420; color:#fff; border:1px solid #3d352e; border-radius:6px; font-size:15px; text-align:left; cursor:pointer;">
+          📋 Storico Registrazioni e Export PDF
+        </button>
         <button id="btn-sub-anomalie" style="padding:14px; background:#2a2420; color:#fff; border:1px solid #3d352e; border-radius:6px; font-size:15px; text-align:left; cursor:pointer;">
           ⚠️ Registro Anomalie Aperte
         </button>
@@ -155,6 +159,10 @@ function renderAltroMenu() {
   document.getElementById('btn-sub-ricezioni').addEventListener('click', () => {
     renderLayout('<div id="tab-content"></div>');
     renderRicezioniPage();
+  });
+  document.getElementById('btn-sub-storico').addEventListener('click', () => {
+    renderLayout('<div id="tab-content"></div>');
+    renderStoricoPage();
   });
   document.getElementById('btn-sub-anomalie').addEventListener('click', () => {
     switchTab('anomalie');
