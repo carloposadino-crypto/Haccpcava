@@ -3,7 +3,7 @@ import { renderRegistroPage } from './registro.js';
 import { renderPuliziePage } from './pulizie.js';
 import { renderAnomaliePage, apriModalAnomalia } from './anomalie.js';
 import { renderProdottiPage } from './prodotti.js';
-import { renderRicezioniPage } from './ricezioni.js';
+import { renderRicezioniPage } from './ricevimento.js';
 import { getTemperature, getRegistro } from './store.js';
 import { db } from './firebase.js';
 import { collection, getDocs, query } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
