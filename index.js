@@ -2,6 +2,8 @@ import { renderTemperaturePage } from './temperature.js';
 import { renderRegistroPage } from './registro.js';
 import { renderPuliziePage } from './pulizie.js';
 import { renderAnomaliePage, apriModalAnomalia } from './anomalie.js';
+import { renderProdottiPage } from './prodotti.js';
+import { renderRicezioniPage } from './ricezioni.js';
 import { getTemperature, getRegistro } from './store.js';
 import { db } from './firebase.js';
 import { collection, getDocs, query } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -128,6 +130,37 @@ async function renderOggi() {
   }
 }
 
+function renderAltroMenu() {
+  renderLayout(`
+    <section class="card">
+      <h2>Funzioni Aggiuntive</h2>
+      <div style="display:flex; flex-direction:column; gap:10px; margin-top:12px;">
+        <button id="btn-sub-prodotti" style="padding:14px; background:#2a2420; color:#fff; border:1px solid #3d352e; border-radius:6px; font-size:15px; text-align:left; cursor:pointer;">
+          📦 Anagrafica Prodotti e Allergeni
+        </button>
+        <button id="btn-sub-ricezioni" style="padding:14px; background:#2a2420; color:#fff; border:1px solid #3d352e; border-radius:6px; font-size:15px; text-align:left; cursor:pointer;">
+          🚚 Ricevimento Merci e Forniture
+        </button>
+        <button id="btn-sub-anomalie" style="padding:14px; background:#2a2420; color:#fff; border:1px solid #3d352e; border-radius:6px; font-size:15px; text-align:left; cursor:pointer;">
+          ⚠️ Registro Anomalie Aperte
+        </button>
+      </div>
+    </section>
+  `);
+
+  document.getElementById('btn-sub-prodotti').addEventListener('click', () => {
+    renderLayout('<div id="tab-content"></div>');
+    renderProdottiPage();
+  });
+  document.getElementById('btn-sub-ricezioni').addEventListener('click', () => {
+    renderLayout('<div id="tab-content"></div>');
+    renderRicezioniPage();
+  });
+  document.getElementById('btn-sub-anomalie').addEventListener('click', () => {
+    switchTab('anomalie');
+  });
+}
+
 function switchTab(tab) {
   currentTab = tab;
   
@@ -146,7 +179,7 @@ function switchTab(tab) {
     renderLayout('<div id="tab-content"></div>');
     renderAnomaliePage();
   } else if (tab === 'altro') {
-    renderLayout(`<section class="card"><h2>Altro</h2><p style="color:#aaa;">Prodotti, Ricevimento merci, Schede e Storico in arrivo...</p></section>`);
+    renderAltroMenu();
   }
 }
 
