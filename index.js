@@ -1,3 +1,6 @@
+import { renderTemperaturePage } from './temperature.js';
+import { getTemperature } from './store.js';
+
 let currentTab = 'oggi';
 
 function renderLayout(contentHtml) {
@@ -8,7 +11,7 @@ function renderLayout(contentHtml) {
     <div class="app-container">
       <header class="app-header">
         <h1>La Cava · HACCP</h1>
-        <button class="btn-anomaly" onclick="alert('Apertura rapida segnalazione anomalia')" title="Segnala Anomalia">!</button>
+        <button class="btn-anomaly" onclick="alert('Segnalazione anomalia')" title="Segnala Anomalia">!</button>
       </header>
       
       <main id="tab-content">
@@ -33,59 +36,65 @@ function renderLayout(contentHtml) {
   });
 }
 
-function renderOggi() {
-  return `
+async function renderOggi() {
+  const html = `
     <section class="card">
       <h2>Stato Controlli di Oggi</h2>
       
       <div class="dashboard-row" onclick="switchTab('temperature')">
         <span class="dashboard-title">Temperature Apparecchiature</span>
-        <span class="dashboard-status" id="dash-temp-status">Da verificare</span>
+        <span class="dashboard-status" id="dash-temp-status">Caricamento...</span>
       </div>
 
       <div class="dashboard-row" onclick="switchTab('registro')">
         <span class="dashboard-title">Cotture / Abbattimenti / Rigenerazioni</span>
-        <span class="dashboard-status" id="dash-reg-status">0 registrate</span>
+        <span class="dashboard-status">0 registrate</span>
       </div>
 
       <div class="dashboard-row" onclick="switchTab('pulizie')">
         <span class="dashboard-title">Pulizie Giornaliere</span>
-        <span class="dashboard-status" id="dash-pulizie-status">In corso</span>
+        <span class="dashboard-status">In corso</span>
       </div>
 
       <div class="dashboard-row" onclick="switchTab('anomalie')">
         <span class="dashboard-title">Anomalie Aperte</span>
-        <span class="dashboard-status" id="dash-anomalie-status" style="color: #4ea8de;">Nessuna</span>
+        <span class="dashboard-status" style="color: #2a9d8f;">Nessuna</span>
       </div>
     </section>
   `;
+  renderLayout(html);
+
+  // Aggiorna stato temperature in dashboard
+  try {
+    const temps = await getTemperature();
+    const oggi = new Date().toISOString().split('T')[0];
+    const rilevazioniOggi = temps.filter(t => t.timestamp && t.timestamp.startsWith(oggi));
+    const statusEl = document.getElementById('dash-temp-status');
+    if (statusEl) {
+      statusEl.textContent = `${rilevazioniOggi.length}/6 verificate`;
+      if (rilevazioniOggi.length === 6) statusEl.style.color = '#2a9d8f';
+    }
+  } catch (e) {
+    const statusEl = document.getElementById('dash-temp-status');
+    if (statusEl) statusEl.textContent = 'Da verificare';
+  }
 }
 
 function switchTab(tab) {
   currentTab = tab;
-  let html = '';
   
-  switch(tab) {
-    case 'oggi':
-      html = renderOggi();
-      break;
-    case 'temperature':
-      html = `<section class="card"><h2>Controlli → Temperature</h2><p style="color:#aaa;">Modulo 6 apparecchiature in arrivo...</p></section>`;
-      break;
-    case 'registro':
-      html = `<section class="card"><h2>Controlli → Registro Processi</h2><p style="color:#aaa;">Modulo CBT / Abbattimento / Rigenerazione in arrivo...</p></section>`;
-      break;
-    case 'pulizie':
-      html = `<section class="card"><h2>Pulizie</h2><p style="color:#aaa;">Checklist giornaliera / settimanale in arrivo...</p></section>`;
-      break;
-    case 'altro':
-      html = `<section class="card"><h2>Altro</h2><p style="color:#aaa;">Prodotti, Ricevimento merci, Schede e Storico in arrivo...</p></section>`;
-      break;
-    default:
-      html = renderOggi();
+  if (tab === 'oggi') {
+    renderOggi();
+  } else if (tab === 'temperature') {
+    renderLayout('<div id="tab-content"></div>');
+    renderTemperaturePage(() => switchTab('oggi'));
+  } else if (tab === 'registro') {
+    renderLayout(`<section class="card"><h2>Controlli → Registro Processi</h2><p style="color:#aaa;">Modulo CBT / Abbattimento / Rigenerazione in arrivo...</p></section>`);
+  } else if (tab === 'pulizie') {
+    renderLayout(`<section class="card"><h2>Pulizie</h2><p style="color:#aaa;">Checklist giornaliera / settimanale in arrivo...</p></section>`);
+  } else if (tab === 'altro') {
+    renderLayout(`<section class="card"><h2>Altro</h2><p style="color:#aaa;">Prodotti, Ricevimento merci, Schede e Storico in arrivo...</p></section>`);
   }
-
-  renderLayout(html);
 }
 
 if (document.readyState === 'loading') {
