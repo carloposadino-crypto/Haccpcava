@@ -8,6 +8,15 @@ import { renderStoricoPage } from './storico.js';
 
 let currentTab = 'oggi';
 
+function executeRender(renderFn, container) {
+  if (typeof renderFn !== 'function') return;
+  const result = renderFn(container);
+  // Se la funzione restituisce una stringa HTML invece di modificare il container, la inseriamo noi
+  if (typeof result === 'string') {
+    container.innerHTML = result;
+  }
+}
+
 function renderLayout() {
   const root = document.getElementById('root');
   if (!root) return;
@@ -35,7 +44,6 @@ function renderLayout() {
     </div>
   `;
 
-  // Inserisce il contenuto reale nel contenitore principale
   const container = document.getElementById('main-container');
   if (!container) return;
 
@@ -44,25 +52,25 @@ function renderLayout() {
       container.innerHTML = renderOggiPage();
       break;
     case 'temperature':
-      typeof renderTemperaturePage === 'function' && renderTemperaturePage(container);
+      executeRender(renderTemperaturePage, container);
       break;
     case 'registro':
-      typeof renderRegistroPage === 'function' && renderRegistroPage(container);
+      executeRender(renderRegistroPage, container);
       break;
     case 'pulizie':
-      typeof renderPuliziePage === 'function' && renderPuliziePage(container);
+      executeRender(renderPuliziePage, container);
       break;
     case 'anomalie':
-      typeof renderAnomaliePage === 'function' && renderAnomaliePage(container);
+      executeRender(renderAnomaliePage, container);
       break;
     case 'prodotti':
-      typeof renderProdottiPage === 'function' && renderProdottiPage(container);
+      executeRender(renderProdottiPage, container);
       break;
     case 'ricevimento':
-      typeof renderRicezioniPage === 'function' && renderRicezioniPage(container);
+      executeRender(renderRicezioniPage, container);
       break;
     case 'storico':
-      typeof renderStoricoPage === 'function' && renderStoricoPage(container);
+      executeRender(renderStoricoPage, container);
       break;
     default:
       container.innerHTML = renderOggiPage();
