@@ -1,110 +1,91 @@
-// Prodotti: inserimento manuale in questa fase (OCR etichetta e barcode
-// sono previsti dall'architettura ma non ancora implementati). Gli
-// allergeni sono un campo array dentro al documento prodotto (non una
-// collezione separata) — è il modo idiomatico di modellare dati "posseduti"
-// da un solo documento in Firestore, ed è più semplice della tabella di
-// giunzione usata nello schema SQL originale.
+import { db } from './firebase.js';
+import { collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-import { aggiungi, leggiTutti, where, orderBy, limit } from '../../lib/store.js';
-
-const ALLERGENI = [
+export const ALLERGENI_UE = [
   'Glutine', 'Crostacei', 'Uova', 'Pesce', 'Arachidi', 'Soia', 'Latte',
-  'Frutta a guscio', 'Sedano', 'Senape', 'Semi di sesamo',
-  'Anidride solforosa e solfiti', 'Lupini', 'Molluschi',
-];
-const TIPI_PRESENZA = [
-  ['ingrediente', 'Ingrediente'],
-  ['derivato', 'Derivato'],
-  ['traccia', 'Traccia dichiarata'],
-  ['contaminazione_crociata', 'Contaminazione crociata'],
+  'Frutta a guscio', 'Sedano', 'Senape', 'Semi di sesamo', 'Anidride solforosa/Solfiti', 'Lupini', 'Molluschi'
 ];
 
-export async function renderProdotti(container) {
+export function renderProdottiPage() {
+  const container = document.getElementById('tab-content');
+  if (!container) return;
+
   container.innerHTML = `
-    <button class="btn btn-primary btn-block" id="nuovo-prodotto" style="margin-bottom:16px;">+ Nuovo prodotto</button>
-    <div id="prod-list"><div class="empty">Caricamento…</div></div>
-  `;
+    <section class="card">
+      <h2>Anagrafica Prodotti e Allergeni (UE 1169/2011)</h2>
+      <form id="prod-form" class="form-group" style="display: flex; flex-direction: column; gap: 12px;">
+        <div>
+          <label style="font-size: 13px; color: #d4a373;">Nome Prodotto / Inrediente</label>
+          <input type="text" name="nome" placeholder="Es. Farina Tipo 00, Salsa Nocciole" required style="width:100%; padding:10px; border-radius:6px; border:1px solid #443c36; background:#2a2420; color:#fff;">
+        </div>
 
-  container.querySelector('#nuovo-prodotto').addEventListener('click', () => {
-    apriFormProdotto(container);
-  });
-
-  await ricaricaElenco(container);
-}
-
-async function ricaricaElenco(container) {
-  const listEl = container.querySelector('#prod-list');
-  const prodotti = await leggiTutti('prodotti', [orderBy('creato_il', 'desc'), limit(50)]);
-  if (!prodotti || prodotti.length === 0) {
-    listEl.innerHTML = `<div class="empty">Nessun prodotto ancora inserito.</div>`;
-    return;
-  }
-  listEl.innerHTML = prodotti.map((p) => `
-    <div class="entry-row">
-      <div class="top">
-        <span class="name">${escapeHtml(p.denominazione)}</span>
-        <span class="badge ${p.stato_verifica === 'verificato' ? 'ok' : 'neutral'}">${p.stato_verifica === 'verificato' ? 'Verificato' : 'Non verificato'}</span>
-      </div>
-      <div class="meta">${escapeHtml(p.conservazione || '')}</div>
-    </div>
-  `).join('');
-}
-
-function apriFormProdotto(container) {
-  const backdrop = document.createElement('div');
-  backdrop.className = 'modal-backdrop';
-  backdrop.innerHTML = `
-    <div class="modal" style="max-height:85vh; overflow-y:auto;">
-      <h3>Nuovo prodotto</h3>
-      <label class="field-label">Denominazione</label>
-      <input type="text" id="p-nome">
-      <label class="field-label">Ingredienti</label>
-      <textarea id="p-ingredienti" placeholder="Come riportati in etichetta"></textarea>
-      <label class="field-label">Conservazione</label>
-      <input type="text" id="p-conservazione" placeholder="Es. 0–4°C">
-      <p class="section-title">Allergeni presenti</p>
-      ${ALLERGENI.map((a) => `
-        <div class="check-row" style="cursor:default;">
-          <input type="checkbox" class="all-check" data-allergene="${a}" style="width:20px;height:20px;">
-          <div class="rt">
-            <div class="t">${a}</div>
-            <select class="all-tipo" data-allergene="${a}" style="margin:6px 0 0;">
-              ${TIPI_PRESENZA.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
-            </select>
+        <div>
+          <label style="font-size: 13px; color: #d4a373; display:block; margin-bottom:6px;">Allergeni Presenti</label>
+          <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap:6px; max-height:150px; overflow-y:auto; background:#1a1614; padding:8px; border-radius:6px; border:1px solid #3d352e;">
+            ${ALLERGENI_UE.map(a => `
+              <label style="font-size:12px; color:#aaa; display:flex; align-items:center; gap:4px;">
+                <input type="checkbox" name="allergeni" value="${a}"> ${a}
+              </label>
+            `).join('')}
           </div>
         </div>
-      `).join('')}
-      <button class="btn btn-primary btn-block" id="p-salva" style="margin-top:8px;">Salva prodotto</button>
-    </div>
+
+        <button type="submit" class="btn" style="background:#d4a373; color:#1a1614; border:none; padding:10px; border-radius:6px; font-weight:bold; cursor:pointer;">Salva Prodotto</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Elenco Prodotti Registrati</h2>
+      <div id="lista-prodotti">Caricamento...</div>
+    </section>
   `;
-  document.body.appendChild(backdrop);
-  backdrop.addEventListener('click', (e) => { if (e.target === backdrop) backdrop.remove(); });
 
-  backdrop.querySelector('#p-salva').addEventListener('click', async () => {
-    const denominazione = backdrop.querySelector('#p-nome').value.trim();
-    if (!denominazione) return;
+  document.getElementById('prod-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const allergeni = formData.getAll('allergeni');
 
-    const allergeni = [...backdrop.querySelectorAll('.all-check:checked')].map((chk) => {
-      const nome = chk.dataset.allergene;
-      const tipoSel = backdrop.querySelector(`.all-tipo[data-allergene="${nome}"]`);
-      return { allergene: nome, tipo_presenza: tipoSel.value };
-    });
-
-    await aggiungi('prodotti', {
-      denominazione,
-      ingredienti: backdrop.querySelector('#p-ingredienti').value.trim() || null,
-      conservazione: backdrop.querySelector('#p-conservazione').value.trim() || null,
-      allergeni,
-      fonte: 'manuale',
-      stato_verifica: 'verificato', // inserimento manuale diretto: l'utente ha già verificato quello che scrive
-      creato_il: new Date(),
-    });
-
-    backdrop.remove();
-    await ricaricaElenco(container);
+    try {
+      await addDoc(collection(db, "prodotti"), {
+        nome: formData.get('nome'),
+        allergeni: allergeni,
+        timestamp: new Date().toISOString()
+      });
+      alert('Prodotto salvato!');
+      caricaProdotti();
+      e.target.reset();
+    } catch (err) {
+      alert('Errore nel salvataggio prodotto.');
+    }
   });
+
+  caricaProdotti();
 }
 
-function escapeHtml(s) {
-  return (s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+async function caricaProdotti() {
+  const container = document.getElementById('lista-prodotti');
+  if (!container) return;
+
+  try {
+    const q = query(collection(db, "prodotti"), orderBy("nome", "asc"));
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) {
+      container.innerHTML = '<p class="empty-text">Nessun prodotto censito.</p>';
+      return;
+    }
+
+    container.innerHTML = snapshot.docs.map(doc => {
+      const p = doc.data();
+      const allStr = p.allergeni && p.allergeni.length > 0 ? p.allergeni.join(', ') : 'Nessun allergene indicato';
+      return `
+        <div style="border-bottom: 1px solid #3d352e; padding: 8px 0;">
+          <strong style="font-size:14px; color:#fff;">${p.nome}</strong>
+          <div style="font-size:12px; color:#d4a373; margin-top:2px;">Allergeni: ${allStr}</div>
+        </div>
+      `;
+    }).join('');
+  } catch (e) {
+    container.innerHTML = '<p class="error-text">Errore caricamento prodotti.</p>';
+  }
 }
