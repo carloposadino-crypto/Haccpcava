@@ -69,20 +69,21 @@ function executeModuleRender(renderFn, container) {
   try {
     const res = renderFn(container);
     
-    // Se la funzione restituisce una stringa HTML, la inserisce nel container
+    // Se la funzione restituisce una stringa HTML
     if (typeof res === 'string') {
       container.innerHTML = res;
     } 
-    // Se la funzione è asincrona e restituisce una Promise
+    // Se la funzione è asincrona (Promise)
     else if (res && typeof res.then === 'function') {
       res.then(asyncRes => {
-        if (typeof asyncRes === 'string') container.innerHTML = asyncRes;
+        if (typeof asyncRes === 'string') {
+          container.innerHTML = asyncRes;
+        }
       }).catch(err => {
-        console.error("Errore Promise nel modulo:", err);
+        console.error("Errore nel modulo:", err);
         container.innerHTML = `<div style="padding:20px; color:#ff6b6b; text-align:center;">Errore nel caricamento dei dati.</div>`;
       });
     }
-    // Se non restituisce nulla (undefined), significa che ha già manipolato direttamente il DOM
   } catch (e) {
     console.error("Errore di rendering:", e);
     container.innerHTML = `<div style="padding:20px; color:#ff6b6b; text-align:center;">Errore durante l'esecuzione del modulo.</div>`;
