@@ -22,7 +22,6 @@ function renderLayout() {
       </header>
 
       <main class="app-content" id="content-area">
-        <div style="padding: 20px; text-align: center; color: #888;">Caricamento in corso...</div>
       </main>
 
       <nav class="bottom-nav">
@@ -65,48 +64,61 @@ function renderLayout() {
   renderPageContent();
 }
 
-async function renderPageContent() {
-  const contentArea = document.getElementById('content-area');
-  if (!contentArea) return;
-
+function executeModuleRender(renderFn, container) {
+  if (typeof renderFn !== 'function') return;
   try {
-    switch (currentTab) {
-      case 'oggi':
-        renderOggiPage(contentArea);
-        break;
-      case 'temperature':
-        if (typeof renderTemperaturePage === 'function') await renderTemperaturePage(contentArea);
-        break;
-      case 'registro':
-        if (typeof renderRegistroPage === 'function') await renderRegistroPage(contentArea);
-        break;
-      case 'pulizie':
-        if (typeof renderPuliziePage === 'function') await renderPuliziePage(contentArea);
-        break;
-      case 'anomalie':
-        if (typeof renderAnomaliePage === 'function') await renderAnomaliePage(contentArea);
-        break;
-      case 'prodotti':
-        if (typeof renderProdottiPage === 'function') await renderProdottiPage(contentArea);
-        break;
-      case 'ricevimento':
-        if (typeof renderRicezioniPage === 'function') await renderRicezioniPage(contentArea);
-        break;
-      case 'storico':
-        if (typeof renderStoricoPage === 'function') await renderStoricoPage(contentArea);
-        break;
-      default:
-        renderOggiPage(contentArea);
+    const htmlOrPromise = renderFn(container);
+    if (typeof htmlOrPromise === 'string') {
+      container.innerHTML = htmlOrPromise;
+    } else if (htmlOrPromise && typeof htmlOrPromise.then === 'function') {
+      htmlOrPromise.then(res => {
+        if (typeof res === 'string') container.innerHTML = res;
+      });
     }
-  } catch (err) {
-    console.error("Errore nel caricamento della pagina:", err);
-    contentArea.innerHTML = `<div style="padding: 20px; color: red;">Errore durante il caricamento del modulo.</div>`;
+  } catch (e) {
+    console.error("Errore di rendering:", e);
   }
 }
 
-function renderOggiPage(container) {
+function renderPageContent() {
+  const container = document.getElementById('content-area');
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  switch (currentTab) {
+    case 'oggi':
+      container.innerHTML = renderOggiPage();
+      break;
+    case 'temperature':
+      executeModuleRender(renderTemperaturePage, container);
+      break;
+    case 'registro':
+      executeModuleRender(renderRegistroPage, container);
+      break;
+    case 'pulizie':
+      executeModuleRender(renderPuliziePage, container);
+      break;
+    case 'anomalie':
+      executeModuleRender(renderAnomaliePage, container);
+      break;
+    case 'prodotti':
+      executeModuleRender(renderProdottiPage, container);
+      break;
+    case 'ricevimento':
+      executeModuleRender(renderRicezioniPage, container);
+      break;
+    case 'storico':
+      executeModuleRender(renderStoricoPage, container);
+      break;
+    default:
+      container.innerHTML = renderOggiPage();
+  }
+}
+
+function renderOggiPage() {
   const today = new Date().toLocaleDateString('it-IT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-  container.innerHTML = `
+  return `
     <div class="page-header">
       <h2>Oggi</h2>
       <p class="date-subtitle">${today}</p>
