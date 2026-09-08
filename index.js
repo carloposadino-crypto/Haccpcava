@@ -15,9 +15,9 @@ function renderLayout() {
   root.innerHTML = `
     <div class="app-container">
       <header class="app-header">
-        <div class="logo-area">
-          <h1>La Cava dei Vini</h1>
-          <span class="badge">HACCP</span>
+        <div class="logo-area" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+          <h1 style="font-size: 20px; font-weight: 600; margin: 0;">La Cava · HACCP</h1>
+          <div style="background-color: #ef4444; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px;">!</div>
         </div>
       </header>
 
@@ -117,40 +117,32 @@ function renderPageContent() {
 }
 
 function renderOggiPage() {
-  const today = new Date().toLocaleDateString('it-IT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   return `
-    <div class="page-header">
-      <h2>Oggi</h2>
-      <p class="date-subtitle">${today}</p>
-    </div>
-    <div class="dashboard-cards">
-      <div class="card" onclick="window.switchTab('temperature')">
-        <div class="card-icon">🌡️</div>
-        <div class="card-info">
-          <h3>Temperature</h3>
-          <p>Registra frigo e freezer</p>
+    <div style="background-color: #1e1b18; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); margin-top: 10px;">
+      <h2 style="color: #d97706; font-size: 16px; font-weight: 600; margin-top: 0; margin-bottom: 16px;">Stato Controlli di Oggi</h2>
+      
+      <div style="display: flex; flex-direction: column;">
+        
+        <div onclick="window.switchTab('temperature')" style="display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid #2d2825; cursor: pointer;">
+          <span style="color: #e5e7eb; font-size: 15px; font-weight: 500;">Temperature Apparecchiature</span>
+          <span style="color: #9ca3af; font-size: 14px;">0/7 verificate</span>
         </div>
-      </div>
-      <div class="card" onclick="window.switchTab('registro')">
-        <div class="card-icon">📋</div>
-        <div class="card-info">
-          <h3>Registro Processi</h3>
-          <p>Cotture e abbattimenti</p>
+
+        <div onclick="window.switchTab('registro')" style="display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid #2d2825; cursor: pointer;">
+          <span style="color: #e5e7eb; font-size: 15px; font-weight: 500;">Cotture / Abbattimenti / Rigenerazioni</span>
+          <span style="color: #9ca3af; font-size: 14px;">0 registrate</span>
         </div>
-      </div>
-      <div class="card" onclick="window.switchTab('pulizie')">
-        <div class="card-icon">🧹</div>
-        <div class="card-info">
-          <h3>Pulizie</h3>
-          <p>Sanificazione giornaliera</p>
+
+        <div onclick="window.switchTab('pulizie')" style="display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid #2d2825; cursor: pointer;">
+          <span style="color: #e5e7eb; font-size: 15px; font-weight: 500;">Pulizie Giornaliere</span>
+          <span style="color: #9ca3af; font-size: 14px;">In corso</span>
         </div>
-      </div>
-      <div class="card" onclick="window.switchTab('anomalie')">
-        <div class="card-icon">⚠️</div>
-        <div class="card-info">
-          <h3>Anomalie</h3>
-          <p>Gestione non conformità</p>
+
+        <div onclick="window.switchTab('anomalie')" style="display: flex; justify-content: space-between; align-items: center; padding: 14px 0; cursor: pointer;">
+          <span style="color: #e5e7eb; font-size: 15px; font-weight: 500;">Anomalie Aperte</span>
+          <span style="color: #9ca3af; font-size: 14px;">0 aperte</span>
         </div>
+
       </div>
     </div>
   `;
