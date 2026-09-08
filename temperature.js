@@ -1,7 +1,7 @@
 import { addTemperatura } from './store.js';
 import { segnalaScrittura } from './sync-status.js';
 
-export function initTemperature() {
+export function initTemperature(onSuccess) {
   const form = document.getElementById('temp-form');
   if (!form) return;
 
@@ -17,5 +17,6 @@ export function initTemperature() {
     await addTemperatura(data);
     segnalaScrittura();
     form.reset();
+    if (onSuccess) onSuccess();
   });
 }
