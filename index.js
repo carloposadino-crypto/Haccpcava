@@ -17,15 +17,15 @@ async function caricaDati() {
       const temps = await getTemperature();
       temps.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
       listTemp.innerHTML = temps.length === 0 
-        ? '<p style="color:#aaa; font-size:14px;">Nessuna temperatura registrata.</p>'
+        ? '<p class="empty-text">Nessuna temperatura registrata.</p>'
         : temps.map(t => `
-            <div style="border-bottom:1px solid #444; padding:8px 0; font-size:14px;">
-              <span style="color:#D4A373; font-size:12px; display:block;">${formatData(t.timestamp)}</span>
-              <b>${t.valore}°C</b> - ${t.note || 'Nessuna nota'}
+            <div class="log-item">
+              <span class="log-date">${formatData(t.timestamp)}</span>
+              <div class="log-content"><b>${t.valore}°C</b> - ${t.note || 'Nessuna nota'}</div>
             </div>
           `).join('');
     } catch (e) {
-      listTemp.innerHTML = `<p style="color:#ff6b6b; font-size:13px;">Errore caricamento dati</p>`;
+      listTemp.innerHTML = `<p class="error-text">Errore caricamento dati</p>`;
     }
   }
 
@@ -34,15 +34,15 @@ async function caricaDati() {
       const regs = await getRegistro();
       regs.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
       listReg.innerHTML = regs.length === 0 
-        ? '<p style="color:#aaa; font-size:14px;">Nessuna nota registrata.</p>'
+        ? '<p class="empty-text">Nessuna nota registrata.</p>'
         : regs.map(r => `
-            <div style="border-bottom:1px solid #444; padding:8px 0; font-size:14px;">
-              <span style="color:#D4A373; font-size:12px; display:block;">${formatData(r.timestamp)}</span>
-              <b>${r.tipo}</b>: ${r.note || ''}
+            <div class="log-item">
+              <span class="log-date">${formatData(r.timestamp)}</span>
+              <div class="log-content"><b>${r.tipo}</b>: ${r.note || ''}</div>
             </div>
           `).join('');
     } catch (e) {
-      listReg.innerHTML = `<p style="color:#ff6b6b; font-size:13px;">Errore caricamento dati</p>`;
+      listReg.innerHTML = `<p class="error-text">Errore caricamento dati</p>`;
     }
   }
 }
@@ -52,31 +52,33 @@ function renderApp() {
   if (!root) return;
 
   root.innerHTML = `
-    <main style="padding: 20px; font-family: 'Manrope', sans-serif; color: #fff; max-width: 600px; margin: 0 auto;">
-      <h1 style="font-size: 24px; margin-bottom: 20px;">La Cava · Registro HACCP</h1>
+    <main class="app-container">
+      <header class="app-header">
+        <h1>La Cava · Registro HACCP</h1>
+      </header>
       
-      <section style="margin-bottom: 25px; background: #2A2420; padding: 15px; border-radius: 8px;">
-        <h2 style="font-size: 18px; margin-bottom: 10px;">Registrazione Temperature</h2>
-        <form id="temp-form" style="display: flex; flex-direction: column; gap: 10px;">
-          <input type="number" step="0.1" name="valore" placeholder="Temperatura (°C)" required style="padding: 10px; border-radius: 4px; border: none;">
-          <input type="text" name="note" placeholder="Note / Reparto" style="padding: 10px; border-radius: 4px; border: none;">
-          <button type="submit" style="padding: 10px; background: #D4A373; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Salva Temperatura</button>
+      <section class="card">
+        <h2>Registrazione Temperature</h2>
+        <form id="temp-form" class="form-group">
+          <input type="number" step="0.1" name="valore" placeholder="Temperatura (°C)" required>
+          <input type="text" name="note" placeholder="Note / Reparto">
+          <button type="submit" class="btn">Salva Temperatura</button>
         </form>
-        <div style="margin-top: 15px;">
-          <h3 style="font-size: 14px; color: #D4A373; margin-bottom: 8px;">Ultime Rilevazioni</h3>
+        <div class="history-section">
+          <h3>Ultime Rilevazioni</h3>
           <div id="lista-temperature">Caricamento...</div>
         </div>
       </section>
 
-      <section style="background: #2A2420; padding: 15px; border-radius: 8px;">
-        <h2 style="font-size: 18px; margin-bottom: 10px;">Registro Sanificazioni / Note</h2>
-        <form id="registro-form" style="display: flex; flex-direction: column; gap: 10px;">
-          <input type="text" name="tipo" placeholder="Tipo intervento / Sanificazione" required style="padding: 10px; border-radius: 4px; border: none;">
-          <textarea name="note" placeholder="Dettagli..." style="padding: 10px; border-radius: 4px; border: none;"></textarea>
-          <button type="submit" style="padding: 10px; background: #D4A373; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Salva Registro</button>
+      <section class="card">
+        <h2>Registro Sanificazioni / Note</h2>
+        <form id="registro-form" class="form-group">
+          <input type="text" name="tipo" placeholder="Tipo intervento / Sanificazione" required>
+          <textarea name="note" placeholder="Dettagli..."></textarea>
+          <button type="submit" class="btn">Salva Registro</button>
         </form>
-        <div style="margin-top: 15px;">
-          <h3 style="font-size: 14px; color: #D4A373; margin-bottom: 8px;">Ultime Note</h3>
+        <div class="history-section">
+          <h3>Ultime Note</h3>
           <div id="lista-registro">Caricamento...</div>
         </div>
       </section>
