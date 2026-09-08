@@ -1,101 +1,99 @@
-import { initTemperature } from './temperature.js';
-import { initRegistro } from './registro.js';
-import { getTemperature, getRegistro } from './store.js';
+let currentTab = 'oggi';
 
-function formatData(isoString) {
-  if (!isoString) return '';
-  const d = new Date(isoString);
-  return d.toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
-
-async function caricaDati() {
-  const listTemp = document.getElementById('lista-temperature');
-  const listReg = document.getElementById('lista-registro');
-
-  if (listTemp) {
-    try {
-      const temps = await getTemperature();
-      temps.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
-      listTemp.innerHTML = temps.length === 0 
-        ? '<p class="empty-text">Nessuna temperatura registrata.</p>'
-        : temps.map(t => `
-            <div class="log-item">
-              <span class="log-date">${formatData(t.timestamp)}</span>
-              <div class="log-content"><b>${t.valore}°C</b> - ${t.note || 'Nessuna nota'}</div>
-            </div>
-          `).join('');
-    } catch (e) {
-      listTemp.innerHTML = `<p class="error-text">Errore caricamento dati</p>`;
-    }
-  }
-
-  if (listReg) {
-    try {
-      const regs = await getRegistro();
-      regs.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
-      listReg.innerHTML = regs.length === 0 
-        ? '<p class="empty-text">Nessuna nota registrata.</p>'
-        : regs.map(r => `
-            <div class="log-item">
-              <span class="log-date">${formatData(r.timestamp)}</span>
-              <div class="log-content"><b>${r.tipo}</b>: ${r.note || ''}</div>
-            </div>
-          `).join('');
-    } catch (e) {
-      listReg.innerHTML = `<p class="error-text">Errore caricamento dati</p>`;
-    }
-  }
-}
-
-function renderApp() {
+function renderLayout(contentHtml) {
   const root = document.getElementById('root');
   if (!root) return;
 
   root.innerHTML = `
-    <main class="app-container">
+    <div class="app-container">
       <header class="app-header">
-        <h1>La Cava · Registro HACCP</h1>
+        <h1>La Cava · HACCP</h1>
+        <button class="btn-anomaly" onclick="alert('Apertura rapida segnalazione anomalia')" title="Segnala Anomalia">!</button>
       </header>
       
-      <section class="card">
-        <h2>Registrazione Temperature</h2>
-        <form id="temp-form" class="form-group">
-          <input type="number" step="0.1" name="valore" placeholder="Temperatura (°C)" required>
-          <input type="text" name="note" placeholder="Note / Reparto">
-          <button type="submit" class="btn">Salva Temperatura</button>
-        </form>
-        <div class="history-section">
-          <h3>Ultime Rilevazioni</h3>
-          <div id="lista-temperature">Caricamento...</div>
-        </div>
-      </section>
+      <main id="tab-content">
+        ${contentHtml}
+      </main>
+    </div>
 
-      <section class="card">
-        <h2>Registro Sanificazioni / Note</h2>
-        <form id="registro-form" class="form-group">
-          <input type="text" name="tipo" placeholder="Tipo intervento / Sanificazione" required>
-          <textarea name="note" placeholder="Dettagli..."></textarea>
-          <button type="submit" class="btn">Salva Registro</button>
-        </form>
-        <div class="history-section">
-          <h3>Ultime Note</h3>
-          <div id="lista-registro">Caricamento...</div>
-        </div>
-      </section>
-    </main>
+    <nav class="bottom-nav">
+      <button class="nav-item ${currentTab === 'oggi' ? 'active' : ''}" data-tab="oggi">Oggi</button>
+      <button class="nav-item ${currentTab === 'temperature' ? 'active' : ''}" data-tab="temperature">Temp</button>
+      <button class="nav-item ${currentTab === 'registro' ? 'active' : ''}" data-tab="registro">Registro</button>
+      <button class="nav-item ${currentTab === 'pulizie' ? 'active' : ''}" data-tab="pulizie">Pulizie</button>
+      <button class="nav-item ${currentTab === 'altro' ? 'active' : ''}" data-tab="altro">Altro</button>
+    </nav>
   `;
 
-  initTemperature(caricaDati);
-  initRegistro(caricaDati);
-  caricaDati();
+  document.querySelectorAll('.nav-item').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      currentTab = e.currentTarget.getAttribute('data-tab');
+      switchTab(currentTab);
+    });
+  });
+}
 
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW registration failed: ', err));
+function renderOggi() {
+  return `
+    <section class="card">
+      <h2>Stato Controlli di Oggi</h2>
+      
+      <div class="dashboard-row" onclick="switchTab('temperature')">
+        <span class="dashboard-title">Temperature Apparecchiature</span>
+        <span class="dashboard-status" id="dash-temp-status">Da verificare</span>
+      </div>
+
+      <div class="dashboard-row" onclick="switchTab('registro')">
+        <span class="dashboard-title">Cotture / Abbattimenti / Rigenerazioni</span>
+        <span class="dashboard-status" id="dash-reg-status">0 registrate</span>
+      </div>
+
+      <div class="dashboard-row" onclick="switchTab('pulizie')">
+        <span class="dashboard-title">Pulizie Giornaliere</span>
+        <span class="dashboard-status" id="dash-pulizie-status">In corso</span>
+      </div>
+
+      <div class="dashboard-row" onclick="switchTab('anomalie')">
+        <span class="dashboard-title">Anomalie Aperte</span>
+        <span class="dashboard-status" id="dash-anomalie-status" style="color: #4ea8de;">Nessuna</span>
+      </div>
+    </section>
+  `;
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  let html = '';
+  
+  switch(tab) {
+    case 'oggi':
+      html = renderOggi();
+      break;
+    case 'temperature':
+      html = `<section class="card"><h2>Controlli → Temperature</h2><p style="color:#aaa;">Modulo 6 apparecchiature in arrivo...</p></section>`;
+      break;
+    case 'registro':
+      html = `<section class="card"><h2>Controlli → Registro Processi</h2><p style="color:#aaa;">Modulo CBT / Abbattimento / Rigenerazione in arrivo...</p></section>`;
+      break;
+    case 'pulizie':
+      html = `<section class="card"><h2>Pulizie</h2><p style="color:#aaa;">Checklist giornaliera / settimanale in arrivo...</p></section>`;
+      break;
+    case 'altro':
+      html = `<section class="card"><h2>Altro</h2><p style="color:#aaa;">Prodotti, Ricevimento merci, Schede e Storico in arrivo...</p></section>`;
+      break;
+    default:
+      html = renderOggi();
   }
+
+  renderLayout(html);
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', renderApp);
+  document.addEventListener('DOMContentLoaded', () => switchTab('oggi'));
 } else {
-  renderApp();
+  switchTab('oggi');
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
 }
