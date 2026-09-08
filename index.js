@@ -1,17 +1,14 @@
 import { renderTemperaturePage } from './temperature.js';
 import { renderRegistroPage } from './registro.js';
 import { renderPuliziePage } from './pulizie.js';
-import { renderAnomaliePage, apriModalAnomalia } from './anomalie.js';
+import { renderAnomaliePage } from './anomalie.js';
 import { renderProdottiPage } from './prodotti.js';
 import { renderRicezioniPage } from './ricevimento.js';
 import { renderStoricoPage } from './storico.js';
-import { getTemperature, getRegistro } from './store.js';
-import { db } from './firebase.js';
-import { collection, getDocs, query } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 let currentTab = 'oggi';
 
-function renderLayout(contentHtml) {
+function renderLayout() {
   const root = document.getElementById('root');
   if (!root) return;
 
@@ -33,11 +30,43 @@ function renderLayout(contentHtml) {
         <button class="nav-btn ${currentTab === 'storico' ? 'active' : ''}" onclick="window.switchTab('storico')">Storico</button>
       </nav>
 
-      <main class="main-content">
-        ${contentHtml}
+      <main class="main-content" id="main-container">
       </main>
     </div>
   `;
+
+  // Inserisce il contenuto reale nel contenitore principale
+  const container = document.getElementById('main-container');
+  if (!container) return;
+
+  switch (currentTab) {
+    case 'oggi':
+      container.innerHTML = renderOggiPage();
+      break;
+    case 'temperature':
+      typeof renderTemperaturePage === 'function' && renderTemperaturePage(container);
+      break;
+    case 'registro':
+      typeof renderRegistroPage === 'function' && renderRegistroPage(container);
+      break;
+    case 'pulizie':
+      typeof renderPuliziePage === 'function' && renderPuliziePage(container);
+      break;
+    case 'anomalie':
+      typeof renderAnomaliePage === 'function' && renderAnomaliePage(container);
+      break;
+    case 'prodotti':
+      typeof renderProdottiPage === 'function' && renderProdottiPage(container);
+      break;
+    case 'ricevimento':
+      typeof renderRicezioniPage === 'function' && renderRicezioniPage(container);
+      break;
+    case 'storico':
+      typeof renderStoricoPage === 'function' && renderStoricoPage(container);
+      break;
+    default:
+      container.innerHTML = renderOggiPage();
+  }
 }
 
 function renderOggiPage() {
@@ -69,44 +98,11 @@ function renderOggiPage() {
 
 export function switchTab(tabName) {
   currentTab = tabName;
-  let html = '';
-
-  switch (tabName) {
-    case 'oggi':
-      html = renderOggiPage();
-      break;
-    case 'temperature':
-      html = renderTemperaturePage();
-      break;
-    case 'registro':
-      html = renderRegistroPage();
-      break;
-    case 'pulizie':
-      html = renderPuliziePage();
-      break;
-    case 'anomalie':
-      html = renderAnomaliePage();
-      break;
-    case 'prodotti':
-      html = renderProdottiPage();
-      break;
-    case 'ricevimento':
-      html = renderRicezioniPage();
-      break;
-    case 'storico':
-      html = renderStoricoPage();
-      break;
-    default:
-      html = renderOggiPage();
-  }
-
-  renderLayout(html);
+  renderLayout();
 }
 
-// ESPOSIZIONE GLOBALE PER RISOLVERE L'ERRORE DI SWITCHTAB
 window.switchTab = switchTab;
 
-// Inizializzazione dell'applicazione
 document.addEventListener('DOMContentLoaded', () => {
   switchTab('oggi');
 });
