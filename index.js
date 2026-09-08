@@ -1,11 +1,10 @@
 import { renderTemperaturePage } from './temperature.js';
 import { renderRegistroPage } from './registro.js';
 import { renderPuliziePage } from './pulizie.js';
-import { renderAnomaliePage, apriModalAnomalia } from './anomalie.js';
+import { renderAnomaliePage } from './anomalie.js';
 import { renderProdottiPage } from './prodotti.js';
 import { renderRicezioniPage } from './ricevimento.js';
 import { renderStoricoPage } from './storico.js';
-import { getTemperature, getRegistro } from './store.js';
 
 let currentTab = 'oggi';
 
@@ -23,6 +22,7 @@ function renderLayout() {
       </header>
 
       <main class="app-content" id="content-area">
+        <div style="padding: 20px; text-align: center; color: #888;">Caricamento in corso...</div>
       </main>
 
       <nav class="bottom-nav">
@@ -65,39 +65,42 @@ function renderLayout() {
   renderPageContent();
 }
 
-function renderPageContent() {
+async function renderPageContent() {
   const contentArea = document.getElementById('content-area');
   if (!contentArea) return;
 
-  contentArea.innerHTML = '';
-
-  switch (currentTab) {
-    case 'oggi':
-      renderOggiPage(contentArea);
-      break;
-    case 'temperature':
-      renderTemperaturePage(contentArea);
-      break;
-    case 'registro':
-      renderRegistroPage(contentArea);
-      break;
-    case 'pulizie':
-      renderPuliziePage(contentArea);
-      break;
-    case 'anomalie':
-      renderAnomaliePage(contentArea);
-      break;
-    case 'prodotti':
-      renderProdottiPage(contentArea);
-      break;
-    case 'ricevimento':
-      renderRicezioniPage(contentArea);
-      break;
-    case 'storico':
-      renderStoricoPage(contentArea);
-      break;
-    default:
-      renderOggiPage(contentArea);
+  try {
+    switch (currentTab) {
+      case 'oggi':
+        renderOggiPage(contentArea);
+        break;
+      case 'temperature':
+        if (typeof renderTemperaturePage === 'function') await renderTemperaturePage(contentArea);
+        break;
+      case 'registro':
+        if (typeof renderRegistroPage === 'function') await renderRegistroPage(contentArea);
+        break;
+      case 'pulizie':
+        if (typeof renderPuliziePage === 'function') await renderPuliziePage(contentArea);
+        break;
+      case 'anomalie':
+        if (typeof renderAnomaliePage === 'function') await renderAnomaliePage(contentArea);
+        break;
+      case 'prodotti':
+        if (typeof renderProdottiPage === 'function') await renderProdottiPage(contentArea);
+        break;
+      case 'ricevimento':
+        if (typeof renderRicezioniPage === 'function') await renderRicezioniPage(contentArea);
+        break;
+      case 'storico':
+        if (typeof renderStoricoPage === 'function') await renderStoricoPage(contentArea);
+        break;
+      default:
+        renderOggiPage(contentArea);
+    }
+  } catch (err) {
+    console.error("Errore nel caricamento della pagina:", err);
+    contentArea.innerHTML = `<div style="padding: 20px; color: red;">Errore durante il caricamento del modulo.</div>`;
   }
 }
 
