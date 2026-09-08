@@ -1,3 +1,4 @@
+import { db, collection, getDocs, query, where } from './firebase.js';
 import { renderTemperaturePage } from './temperature.js';
 import { renderRegistroPage } from './registro.js';
 import { renderPuliziePage } from './pulizie.js';
@@ -17,7 +18,7 @@ function renderLayout() {
       <header class="app-header">
         <div class="logo-area" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
           <h1 style="font-size: 20px; font-weight: 600; margin: 0;">La Cava · HACCP</h1>
-          <div style="background-color: #ef4444; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px;">!</div>
+          <div id="status-alert-badge" style="background-color: #ef4444; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px;">!</div>
         </div>
       </header>
 
@@ -89,6 +90,7 @@ function renderPageContent() {
   switch (currentTab) {
     case 'oggi':
       container.innerHTML = renderOggiPage();
+      loadTodayDashboardData();
       break;
     case 'temperature':
       executeModuleRender(renderTemperaturePage, container);
@@ -113,6 +115,7 @@ function renderPageContent() {
       break;
     default:
       container.innerHTML = renderOggiPage();
+      loadTodayDashboardData();
   }
 }
 
@@ -125,27 +128,61 @@ function renderOggiPage() {
         
         <div onclick="window.switchTab('temperature')" style="display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid #2d2825; cursor: pointer;">
           <span style="color: #e5e7eb; font-size: 15px; font-weight: 500;">Temperature Apparecchiature</span>
-          <span style="color: #9ca3af; font-size: 14px;">0/7 verificate</span>
+          <span id="dash-temp-status" style="color: #9ca3af; font-size: 14px;">Caricamento...</span>
         </div>
 
         <div onclick="window.switchTab('registro')" style="display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid #2d2825; cursor: pointer;">
           <span style="color: #e5e7eb; font-size: 15px; font-weight: 500;">Cotture / Abbattimenti / Rigenerazioni</span>
-          <span style="color: #9ca3af; font-size: 14px;">0 registrate</span>
+          <span id="dash-reg-status" style="color: #9ca3af; font-size: 14px;">0 registrate</span>
         </div>
 
         <div onclick="window.switchTab('pulizie')" style="display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid #2d2825; cursor: pointer;">
           <span style="color: #e5e7eb; font-size: 15px; font-weight: 500;">Pulizie Giornaliere</span>
-          <span style="color: #9ca3af; font-size: 14px;">In corso</span>
+          <span id="dash-clean-status" style="color: #9ca3af; font-size: 14px;">In corso</span>
         </div>
 
         <div onclick="window.switchTab('anomalie')" style="display: flex; justify-content: space-between; align-items: center; padding: 14px 0; cursor: pointer;">
           <span style="color: #e5e7eb; font-size: 15px; font-weight: 500;">Anomalie Aperte</span>
-          <span style="color: #9ca3af; font-size: 14px;">0 aperte</span>
+          <span id="dash-anom-status" style="color: #9ca3af; font-size: 14px;">0 aperte</span>
         </div>
 
       </div>
     </div>
   `;
+}
+
+async function loadTodayDashboardData() {
+  const tempStatusElem = document.getElementById('dash-temp-status');
+  const alertBadge = document.getElementById('status-alert-badge');
+  if (!tempStatusElem) return;
+
+  try {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const q = query(collection(db, "temperature"), where("data", "==", todayStr));
+    const querySnapshot = await getDocs(q);
+
+    let totalChecked = 0;
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      if (data.count) {
+        totalChecked = Math.max(totalChecked, data.count);
+      } else if (data.letture) {
+        totalChecked = Math.max(totalChecked, Object.keys(data.letture).length);
+      }
+    });
+
+    if (totalChecked >= 7) {
+      tempStatusElem.innerText = '7/7 verificate';
+      tempStatusElem.style.color = '#10b981';
+      if (alertBadge) alertBadge.style.backgroundColor = '#10b981';
+    } else {
+      tempStatusElem.innerText = `${totalChecked}/7 verificate`;
+      tempStatusElem.style.color = totalChecked > 0 ? '#f59e0b' : '#9ca3af';
+    }
+  } catch (err) {
+    console.error("Errore caricamento stato dashboard:", err);
+    tempStatusElem.innerText = '0/7 verificate';
+  }
 }
 
 export function switchTab(tabName) {
