@@ -24,10 +24,10 @@ export function renderEtichettePage(container) {
       <div class="card" style="display: flex; flex-direction: column; gap: 8px;">
         <label style="font-weight: bold; font-size: 15px;">Tecnica di Conservazione</label>
         <select id="prod_tecnica" name="prod_tecnica" style="padding: 10px; font-size: 16px; border-radius: 6px; border: 1px solid #ccc; width: 100%;">
-          <option value="Frigo (+2°C / +4°C)">Refrigerazione Classica (+2°C / +4°C)</option>
-          <option value="Sottovuoto Frigo">Sottovuoto Refrigerato</option>
-          <option value="Abbattuto Freezer (-18°C)">Abbattuto e Congelato (-18°C)</option>
-          <option value="Cottura Roner / Sottovuoto">Cottura BT / Roner Sottovuoto</option>
+          <option value="Frigo (+2°C / +4°C)" data-giorni="3">Refrigerazione Classica (+2°C / +4°C) - [3 gg]</option>
+          <option value="Sottovuoto Frigo" data-giorni="10">Sottovuoto Refrigerato - [10 gg]</option>
+          <option value="Abbattuto Freezer (-18°C)" data-giorni="90">Abbattuto e Congelato (-18°C) - [90 gg]</option>
+          <option value="Cottura Roner / Sottovuoto" data-giorni="14">Cottura BT / Roner Sottovuoto - [14 gg]</option>
         </select>
       </div>
 
@@ -56,8 +56,22 @@ export function renderEtichettePage(container) {
 
   if (container) {
     container.innerHTML = html;
-    const btn = container.querySelector('#btn-save-etichetta');
-    if (btn) btn.addEventListener('click', handleSaveEtichetta);
+    
+    const btnSave = container.querySelector('#btn-save-etichetta');
+    if (btnSave) btnSave.addEventListener('click', handleSaveEtichetta);
+
+    const selectTecnica = container.querySelector('#prod_tecnica');
+    const inputGiorni = container.querySelector('#prod_durata_giorni');
+
+    if (selectTecnica && inputGiorni) {
+      selectTecnica.addEventListener('change', (e) => {
+        const selectedOption = e.target.options[e.target.selectedIndex];
+        const defaultDays = selectedOption.getAttribute('data-giorni');
+        if (defaultDays) {
+          inputGiorni.value = defaultDays;
+        }
+      });
+    }
   }
 
   return html;
@@ -101,21 +115,33 @@ async function handleSaveEtichetta() {
       timestamp: serverTimestamp()
     });
 
-    // Generazione anteprima etichetta da stampare
     const previewContainer = document.getElementById('preview-etichetta-container');
     if (previewContainer) {
       previewContainer.innerHTML = `
-        <div class="card" style="border: 2px dashed #2b5c3a; background-color: #f8fafc; padding: 15px; font-family: monospace;">
+        <div id="printable-label-card" class="card" style="border: 2px dashed #2b5c3a; background-color: #f8fafc; padding: 15px; font-family: monospace;">
           <h3 style="margin: 0 0 5px 0; text-align: center; font-size: 18px;">LA CAVA DEI VINI</h3>
-          <p style="margin: 0 0 10px 0; text-align: center; font-size: 12px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">ETICHETTA TRACCIABILITÀ INTERNA</p>
+          <p style="margin: 0 0 10px 0; text-align: center; font-size: 11px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">ETICHETTA TRACCIABILITÀ INTERNA</p>
           <p style="margin: 3px 0; font-size: 15px;"><b>PRODOTTO:</b> ${nome.toUpperCase()}</p>
           <p style="margin: 3px 0; font-size: 13px;"><b>LOTTO INT.:</b> ${lottoInterno}</p>
           <p style="margin: 3px 0; font-size: 13px;"><b>LOTTO FORN.:</b> ${lottoFornitore}</p>
           <p style="margin: 3px 0; font-size: 13px;"><b>CONSERVAZIONE:</b> ${tecnica}</p>
+          <p style="margin: 3px 0; font-size: 13px;"><b>QUANTITÀ:</b> ${quantita}</p>
           <p style="margin: 3px 0; font-size: 13px;"><b>DATA PREP.:</b> ${dataProduzioneStr}</p>
-          <p style="margin: 5px 0 0 0; font-size: 16px; color: #b91c1c; font-weight: bold; border-top: 1px solid #ccc; padding-top: 5px;"><b>SCADENZA:</b> ${dataScadenzaStr}</p>
+          <p style="margin: 6px 0 0 0; font-size: 16px; color: #b91c1c; font-weight: bold; border-top: 1px solid #ccc; padding-top: 5px;"><b>SCADENZA:</b> ${dataScadenzaStr}</p>
         </div>
+
+        <button 
+          type="button" 
+          id="btn-print-etichetta"
+          style="width: 100%; padding: 12px; background-color: #1e3a8a; color: white; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 10px;"
+        >
+          🖨️ Stampa Etichetta
+        </button>
       `;
+
+      document.getElementById('btn-print-etichetta')?.addEventListener('click', () => {
+        window.print();
+      });
     }
 
     alert('Tracciabilità registrata con successo!');
