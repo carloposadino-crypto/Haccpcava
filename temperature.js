@@ -1,10 +1,9 @@
-import { db, collection, addDoc, getDocs, query, where, serverTimestamp } from './firebase.js';
+import { db, collection, addDoc, serverTimestamp } from './firebase.js';
 
 export function renderTemperaturePage(container) {
   const today = new Date().toLocaleDateString('it-IT');
 
   const attrezzature = [
-    { id: 'tavolo_pasticceria', name: 'Tavolo Refrigerato Pasticceria', range: '+2°C / +4°C', placeholder: '3.5' },
     { id: 'tavolo_cucina', name: 'Tavolo Refrigerato Cucina', range: '+2°C / +4°C', placeholder: '3.0' },
     { id: 'armadio_positivo', name: 'Armadio Frigo Positivo', range: '+0°C / +4°C', placeholder: '2.5' },
     { id: 'frigo_bibite', name: 'Frigo Vetrina Bibite', range: '+2°C / +6°C', placeholder: '4.0' },
