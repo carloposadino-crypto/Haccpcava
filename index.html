@@ -4,67 +4,62 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HACCP - La Cava dei Vini</title>
+  
+  <!-- CSS -->
   <link rel="stylesheet" href="css/style.css">
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#2b5c3a">
-  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3075/3075977.png">
+
+  <!-- jsPDF & AutoTable per Export PDF nello Storico -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
 
-  <!-- Header -->
+  <!-- Header Applicazione -->
   <header class="app-header">
-    <div class="logo-title">
-      <h1>La Cava dei Vini</h1>
-      <p>Registro Operativo Autocontrollo HACCP</p>
-    </div>
+    <h1>LA CAVA DEI VINI</h1>
+    <p>Autocontrollo HACCP & Tracciabilità</p>
   </header>
 
-  <!-- Contenuto dinamico delle pagine -->
-  <main id="app-container">
-    <!-- Le sezioni verranno iniettate qui tramite JS -->
-  </main>
+  <!-- Container Dinamico per i Moduli -->
+  <main id="app-container"></main>
 
-  <!-- Bottom Navigation Menu per Mobile -->
+  <!-- Bottom Navigation Bar (Fissa in Basso) -->
   <nav class="bottom-nav">
     <button class="nav-btn active" data-tab="oggi">
       <span class="nav-icon">📊</span>
-      <span class="nav-label">Oggi</span>
+      <span>Oggi</span>
     </button>
     <button class="nav-btn" data-tab="temperature">
-      <span class="nav-icon">🌡️</span>
-      <span class="nav-label">Temp</span>
+      <span class="nav-icon">❄️</span>
+      <span>Temp</span>
     </button>
     <button class="nav-btn" data-tab="registro">
-      <span class="nav-icon">🔥</span>
-      <span class="nav-label">Cotture</span>
+      <span class="nav-icon">🍳</span>
+      <span>Cotture</span>
     </button>
     <button class="nav-btn" data-tab="pulizie">
       <span class="nav-icon">🧹</span>
-      <span class="nav-label">Pulizie</span>
+      <span>Pulizie</span>
     </button>
     <button class="nav-btn" data-tab="anomalie">
       <span class="nav-icon">⚠️</span>
-      <span class="nav-label">Anomalie</span>
+      <span>Anomalie</span>
     </button>
     <button class="nav-btn" data-tab="ricevimento">
-      <span class="nav-icon">📦</span>
-      <span class="nav-label">Merci</span>
+      <span class="nav-icon">🚚</span>
+      <span>Merci</span>
+    </button>
+    <button class="nav-btn" data-tab="etichette">
+      <span class="nav-icon">🏷️</span>
+      <span>Etichette</span>
     </button>
     <button class="nav-btn" data-tab="storico">
       <span class="nav-icon">📁</span>
-      <span class="nav-label">Storico</span>
+      <span>Storico</span>
     </button>
   </nav>
 
+  <!-- Script Principale (ES Module) -->
   <script type="module" src="js/app.js"></script>
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js')
-          .then(reg => console.log('Service Worker registrato con successo:', reg.scope))
-          .catch(err => console.error('Errore registrazione Service Worker:', err));
-      });
-    }
-  </script>
 </body>
 </html>
