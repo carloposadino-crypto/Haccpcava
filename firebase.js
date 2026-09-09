@@ -1,6 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+// Sostituisci con i dati reali della tua console Firebase
 const firebaseConfig = {
   apiKey: "TUA_API_KEY",
   authDomain: "TUO_DOMINIO.firebaseapp.com",
