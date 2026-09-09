@@ -171,17 +171,17 @@ async function loadTodayDashboardData() {
       }
     });
 
-    if (totalChecked >= 7) {
-      tempStatusElem.innerText = '7/7 verificate';
+    if (totalChecked >= 6) {
+      tempStatusElem.innerText = '6/6 verificate';
       tempStatusElem.style.color = '#10b981';
       if (alertBadge) alertBadge.style.backgroundColor = '#10b981';
     } else {
-      tempStatusElem.innerText = `${totalChecked}/7 verificate`;
+      tempStatusElem.innerText = `${totalChecked}/6 verificate`;
       tempStatusElem.style.color = totalChecked > 0 ? '#f59e0b' : '#9ca3af';
     }
   } catch (err) {
     console.error("Errore caricamento stato dashboard:", err);
-    tempStatusElem.innerText = '0/7 verificate';
+    tempStatusElem.innerText = '0/6 verificate';
   }
 }
 
