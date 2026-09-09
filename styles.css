@@ -9,7 +9,7 @@
 body {
   background-color: #f1f5f9;
   color: #1e293b;
-  padding-bottom: 80px; /* Spazio per la nav bar mobile in basso */
+  padding-bottom: 90px;
 }
 
 /* Header */
@@ -92,7 +92,7 @@ input:focus, select:focus, textarea:focus {
   border-top: 1px solid #e2e8f0;
   display: flex;
   justify-content: space-around;
-  padding: 6px 0;
+  padding: 8px 0;
   z-index: 1000;
 }
 
@@ -120,7 +120,7 @@ input:focus, select:focus, textarea:focus {
   font-weight: bold;
 }
 
-/* Stili specifici per la Stampa dell'Etichetta */
+/* Stili per la Stampa dell'Etichetta */
 @media print {
   body * {
     visibility: hidden;
