@@ -2,26 +2,69 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>La Cava · Registro HACCP</title>
-  <link rel="manifest" href="./manifest.json">
-  <meta name="theme-color" content="#211C18">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="./main.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HACCP - La Cava dei Vini</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2b5c3a">
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3075/3075977.png">
 </head>
 <body>
-  <div id="root"><div class="empty">Caricamento...</div></div>
 
+  <!-- Header -->
+  <header class="app-header">
+    <div class="logo-title">
+      <h1>La Cava dei Vini</h1>
+      <p>Registro Operativo Autocontrollo HACCP</p>
+    </div>
+  </header>
+
+  <!-- Contenuto dinamico delle pagine -->
+  <main id="app-container">
+    <!-- Le sezioni verranno iniettate qui tramite JS -->
+  </main>
+
+  <!-- Bottom Navigation Menu per Mobile -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" data-tab="oggi">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">Oggi</span>
+    </button>
+    <button class="nav-btn" data-tab="temperature">
+      <span class="nav-icon">🌡️</span>
+      <span class="nav-label">Temp</span>
+    </button>
+    <button class="nav-btn" data-tab="registro">
+      <span class="nav-icon">🔥</span>
+      <span class="nav-label">Cotture</span>
+    </button>
+    <button class="nav-btn" data-tab="pulizie">
+      <span class="nav-icon">🧹</span>
+      <span class="nav-label">Pulizie</span>
+    </button>
+    <button class="nav-btn" data-tab="anomalie">
+      <span class="nav-icon">⚠️</span>
+      <span class="nav-label">Anomalie</span>
+    </button>
+    <button class="nav-btn" data-tab="ricevimento">
+      <span class="nav-icon">📦</span>
+      <span class="nav-label">Merci</span>
+    </button>
+    <button class="nav-btn" data-tab="storico">
+      <span class="nav-icon">📁</span>
+      <span class="nav-label">Storico</span>
+    </button>
+  </nav>
+
+  <script type="module" src="js/app.js"></script>
   <script>
-    window.addEventListener('error', function(e) {
-      document.getElementById('root').innerHTML = 
-        '<div style="color:red; background:#fff; padding:20px; font-family:monospace; word-break:break-all;">' +
-        '<b>ERRORE:</b> ' + e.message + '<br><br><b>FILE:</b> ' + e.filename + '<br><br><b>RIGA:</b> ' + e.lineno + 
-        '</div>';
-    });
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js')
+          .then(reg => console.log('Service Worker registrato con successo:', reg.scope))
+          .catch(err => console.error('Errore registrazione Service Worker:', err));
+      });
+    }
   </script>
-
-  <script type="module" src="./index.js"></script>
 </body>
 </html>
