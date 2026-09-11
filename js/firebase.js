@@ -1,17 +1,18 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { 
+  getFirestore, 
+  collection, 
+  addDoc, 
+  getDocs, 
+  query, 
+  orderBy, 
+  limit, 
+  serverTimestamp 
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// Sostituisci con i dati reali della tua console Firebase
-const firebaseConfig = {
-  apiKey: "TUA_API_KEY",
-  authDomain: "TUO_DOMINIO.firebaseapp.com",
-  projectId: "TUO_PROJECT_ID",
-  storageBucket: "TUO_STORAGE_BUCKET",
-  messagingSenderId: "TUO_MESSAGING_SENDER_ID",
-  appId: "TUO_APP_ID"
-};
+import { firebaseConfig } from './config.js';
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-export { db, collection, addDoc, getDocs, query, where, serverTimestamp };
+export { db, collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp };
