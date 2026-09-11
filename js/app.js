@@ -8,10 +8,8 @@ import { renderEtichettePage } from './etichette.js';
 import { renderStoricoPage } from './storico.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-  const container = document.getElementById('app-container');
-  const navButtons = document.querySelectorAll('.bottom-nav .nav-btn');
+  const container = document.getElementById('root');
 
-  // Mappa delle funzioni per ogni sezione
   const routes = {
     oggi: renderDashboardPage,
     temperature: renderTemperaturePage,
@@ -23,40 +21,68 @@ document.addEventListener('DOMContentLoaded', () => {
     storico: renderStoricoPage
   };
 
-  function loadTab(tabName) {
+  function renderLayout() {
     if (!container) return;
+    container.innerHTML = `
+      <div class="app-container">
+        <header class="app-header">
+          <div class="logo-area" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <h1 style="font-size: 20px; font-weight: 600; margin: 0;">La Cava · HACCP</h1>
+            <div id="status-alert-badge" style="background-color: #ef4444; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px;">!</div>
+          </div>
+        </header>
 
-    // Svuota il contenitore principale
-    container.innerHTML = '';
+        <main class="app-content" id="content-area"></main>
 
-    // Aggiorna lo stato visivo dei pulsanti di navigazione
-    navButtons.forEach(btn => {
-      if (btn.dataset.tab === tabName) {
+        <nav class="bottom-nav">
+          <button class="nav-item active" data-tab="oggi">
+            <span class="nav-icon">📊</span>
+            <span class="nav-label">Oggi</span>
+          </button>
+          <button class="nav-item" data-tab="temperature">
+            <span class="nav-icon">🌡️</span>
+            <span class="nav-label">Temperature</span>
+          </button>
+          <button class="nav-item" data-tab="registro">
+            <span class="nav-icon">📋</span>
+            <span class="nav-label">Registro</span>
+          </button>
+          <button class="nav-item" data-tab="pulizie">
+            <span class="nav-icon">🧹</span>
+            <span class="nav-label">Pulizie</span>
+          </button>
+        </nav>
+      </div>
+    `;
+
+    document.querySelectorAll('.bottom-nav .nav-item').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const tab = e.currentTarget.getAttribute('data-tab');
+        loadTab(tab);
+      });
+    });
+
+    loadTab('oggi');
+  }
+
+  function loadTab(tabName) {
+    const contentArea = document.getElementById('content-area');
+    if (!contentArea) return;
+
+    contentArea.innerHTML = '';
+
+    document.querySelectorAll('.nav-item').forEach(btn => {
+      if (btn.getAttribute('data-tab') === tabName) {
         btn.classList.add('active');
       } else {
         btn.classList.remove('active');
       }
     });
 
-    // Carica ed esegue il modulo richiesto
-    const renderFunction = routes[tabName];
-    if (renderFunction) {
-      renderFunction(container);
-    } else {
-      container.innerHTML = '<p style="padding: 20px; text-align: center;">Modulo in fase di caricamento...</p>';
+    if (routes[tabName]) {
+      routes[tabName](contentArea);
     }
   }
 
-  // Aggiunge l'evento click a ciascun pulsante della barra inferiore
-  navButtons.forEach(button => {
-    button.addEventListener('click', (e) => {
-      const tab = e.currentTarget.dataset.tab;
-      if (tab) {
-        loadTab(tab);
-      }
-    });
-  });
-
-  // Caricamento iniziale sulla scheda "Oggi"
-  loadTab('oggi');
+  renderLayout();
 });
