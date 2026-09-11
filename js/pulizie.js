@@ -2,41 +2,61 @@ import { db, collection, addDoc, serverTimestamp } from './firebase.js';
 
 export function renderPuliziePage(container) {
   const today = new Date().toISOString().split('T')[0];
+
   container.innerHTML = `
     <div class="page-header">
-      <h2>Pulizie & Sanificazioni</h2>
-      <p class="date-subtitle">Checklist giornaliera locali e attrezzature</p>
+      <h2>Registro Pulizie & Sanificazione</h2>
+      <p class="date-subtitle">Checklist piano di sanificazione HACCP</p>
     </div>
-    <form id="pulizie-form" class="card" style="display: flex; flex-direction: column; gap: 12px;">
-      <label><input type="checkbox" class="pulizia-item" value="Piani di lavoro e taglieri"> Piani di lavoro e taglieri</label>
-      <label><input type="checkbox" class="pulizia-item" value="Affettatrice e attrezzature"> Affettatrice e attrezzature</label>
-      <label><input type="checkbox" class="pulizia-item" value="Lavelli e rubinetteria"> Lavelli e rubinetteria</label>
-      <label><input type="checkbox" class="pulizia-item" value="Pavimenti e scarichi cucina"> Pavimenti e scarichi cucina</label>
-      <label><input type="checkbox" class="pulizia-item" value="Interno frigoriferi"> Interno frigoriferi</label>
-      
-      <label style="font-weight: bold; font-size: 14px; margin-top: 5px;">Note / Anomalie Pulizia</label>
-      <textarea id="pulizie_note" placeholder="Eventuali note..."></textarea>
 
-      <button type="button" id="btn-save-pulizie" style="padding: 12px; background-color: #2b5c3a; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 5px;">Registra Pulizie</button>
+    <form id="pulizie-form" class="card" style="display: flex; flex-direction: column; gap: 12px;">
+      <label style="font-weight: bold; font-size: 14px;">Data</label>
+      <input type="date" id="pul_data" value="${today}" required>
+
+      <label style="font-weight: bold; font-size: 14px;">Mansioni Eseguite</label>
+
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <label><input type="checkbox" class="chk-task" value="Piani di lavoro e taglioverdure"> Piani di lavoro e taglioverdure</label>
+        <label><input type="checkbox" class="chk-task" value="Fornelli, piastre e forno Rational"> Fornelli, piastre e forno Rational</label>
+        <label><input type="checkbox" class="chk-task" value="Lavaggio pavimenti e scarichi cucina"> Lavaggio pavimenti e scarichi cucina</label>
+        <label><input type="checkbox" class="chk-task" value="Sanificazione affettatrice e impastatrice"> Sanificazione affettatrice e impastatrice</label>
+        <label><input type="checkbox" class="chk-task" value="Maniglie e guarnizioni frigo"> Maniglie e guarnizioni frigo</label>
+        <label><input type="checkbox" class="chk-task" value="Filtri cappa e cappa d'aspirazione"> Filtri cappa e cappa d'aspirazione</label>
+      </div>
+
+      <label style="font-weight: bold; font-size: 14px; margin-top: 10px;">Operatore / Firma</label>
+      <input type="text" id="pul_operatore" placeholder="Nome dell'operatore responsabile" required>
+
+      <button type="button" id="btn-save-pulizie" style="padding: 12px; background-color: #2b5c3a; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 8px;">
+        Registra Pulizie
+      </button>
     </form>
   `;
 
-  container.querySelector('#btn-save-pulizie')?.addEventListener('click', async () => {
-    const checkboxes = container.querySelectorAll('.pulizia-item:checked');
-    const note = container.querySelector('#pulizie_note').value;
+  container.querySelector('#btn-save-pulizie').addEventListener('click', async () => {
+    const data = container.querySelector('#pul_data').value;
+    const operatore = container.querySelector('#pul_operatore').value.trim();
+
+    const taskElements = container.querySelectorAll('.chk-task:checked');
+    const mansioni = Array.from(taskElements).map(el => el.value);
+
+    if (mansioni.length === 0 || !operatore) {
+      alert('Seleziona almeno una mansione e specifica l\'operatore.');
+      return;
+    }
 
     try {
-      await addDoc(collection(db, "pulizie"), {
-        data: today,
-        totale_completate: checkboxes.length,
-        note,
+      await addDoc(collection(db, 'pulizie'), {
+        data,
+        mansioni,
+        operatore,
         timestamp: serverTimestamp()
       });
-      alert('Pulizie registrate con successo!');
-      container.querySelector('#pulizie-form').reset();
+      alert('Registro pulizie salvato con successo!');
+      renderPuliziePage(container);
     } catch (err) {
       console.error(err);
-      alert('Errore nel salvataggio.');
+      alert('Errore durante il salvataggio.');
     }
   });
 }
