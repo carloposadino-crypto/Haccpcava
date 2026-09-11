@@ -10,6 +10,7 @@ import { renderStoricoPage } from './storico.js';
 document.addEventListener('DOMContentLoaded', () => {
   const container = document.getElementById('root');
 
+  // Mappa delle viste/schermate dell'app
   const routes = {
     oggi: renderDashboardPage,
     temperature: renderTemperaturePage,
@@ -20,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     storico: renderStoricoPage
   };
 
+  // Costruzione della struttura visiva dell'applicazione
   function renderLayout() {
     if (!container) return;
     container.innerHTML = `
@@ -45,6 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
     `;
 
+    // Event listener sui tasti della barra in basso
     document.querySelectorAll('.bottom-nav .nav-item').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const tab = e.currentTarget.getAttribute('data-tab');
@@ -52,9 +55,11 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
+    // Carica la pagina principale al primo avvio
     loadTab('oggi');
   }
 
+  // Funzione per cambiare la schermata attiva
   function loadTab(tabName) {
     const contentArea = document.getElementById('content-area');
     if (!contentArea) return;
