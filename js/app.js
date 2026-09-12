@@ -1,85 +1,36 @@
-import { renderDashboardPage } from './dashboard.js';
+import { renderRicevimentoPage } from './ricevimento.js';
 import { renderTemperaturePage } from './temperature.js';
-import { renderRegistroPage } from './registro.js';
+import { renderEtichettePage } from './etichette.js';
 import { renderPuliziePage } from './pulizie.js';
 import { renderAbbattimentoPage } from './abbattimento.js';
-import { renderEtichettePage } from './etichette.js';
-import { renderRicezioniPage } from './ricevimento.js';
-import { renderStoricoPage } from './storico.js';
+import { renderRicettePage } from './ricette.js';
+
+const container = document.getElementById('app-container');
+
+export function navigate(page) {
+  container.innerHTML = '';
+
+  if (page === 'ricevimento') {
+    renderRicevimentoPage(container);
+  } else if (page === 'temperature') {
+    renderTemperaturePage(container);
+  } else if (page === 'etichette') {
+    renderEtichettePage(container);
+  } else if (page === 'pulizie') {
+    renderPuliziePage(container);
+  } else if (page === 'abbattimento') {
+    renderAbbattimentoPage(container);
+  } else if (page === 'ricette') {
+    renderRicettePage(container);
+  } else {
+    renderRicevimentoPage(container);
+  }
+
+  window.scrollTo(0, 0);
+}
+
+window.navigate = navigate;
 
 document.addEventListener('DOMContentLoaded', () => {
-  const container = document.getElementById('root');
-
-  // Mappa delle viste/schermate dell'app
-  const routes = {
-    oggi: renderDashboardPage,
-    temperature: renderTemperaturePage,
-    abbattimento: renderAbbattimentoPage,
-    etichette: renderEtichettePage,
-    ricevimento: renderRicezioniPage,
-    pulizie: renderPuliziePage,
-    storico: renderStoricoPage
-  };
-
-  // Costruzione della struttura visiva dell'applicazione
-  function renderLayout() {
-    if (!container) return;
-    container.innerHTML = `
-      <div class="app-container">
-        <header class="app-header">
-          <div class="logo-area" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-            <h1 style="font-size: 20px; font-weight: 600; margin: 0;">La Cava · HACCP</h1>
-            <div id="status-alert-badge" style="background-color: #2b5c3a; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px;">OK</div>
-          </div>
-        </header>
-
-        <main class="app-content" id="content-area"></main>
-
-        <nav class="bottom-nav" style="display: flex; overflow-x: auto; background: #fff; border-top: 1px solid #ccc; position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;">
-          <button class="nav-item active" data-tab="oggi">📊 Oggi</button>
-          <button class="nav-item" data-tab="temperature">🌡️ Temp</button>
-          <button class="nav-item" data-tab="abbattimento">❄️ Abbatti</button>
-          <button class="nav-item" data-tab="etichette">🏷️ Etichette</button>
-          <button class="nav-item" data-tab="ricevimento">📦 Merci</button>
-          <button class="nav-item" data-tab="pulizie">🧹 Pulizie</button>
-          <button class="nav-item" data-tab="storico">📜 Report</button>
-        </nav>
-      </div>
-    `;
-
-    // Event listener sui tasti della barra in basso
-    document.querySelectorAll('.bottom-nav .nav-item').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const tab = e.currentTarget.getAttribute('data-tab');
-        loadTab(tab);
-      });
-    });
-
-    // Carica la pagina principale al primo avvio
-    loadTab('oggi');
-  }
-
-  // Funzione per cambiare la schermata attiva
-  function loadTab(tabName) {
-    const contentArea = document.getElementById('content-area');
-    if (!contentArea) return;
-
-    contentArea.innerHTML = '';
-
-    document.querySelectorAll('.nav-item').forEach(btn => {
-      if (btn.getAttribute('data-tab') === tabName) {
-        btn.classList.add('active');
-        btn.style.fontWeight = 'bold';
-      } else {
-        btn.classList.remove('active');
-        btn.style.fontWeight = 'normal';
-      }
-    });
-
-    if (routes[tabName]) {
-      routes[tabName](contentArea);
-    }
-  }
-
-  renderLayout();
+  navigate('ricevimento');
 });

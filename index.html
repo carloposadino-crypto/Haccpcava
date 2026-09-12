@@ -2,24 +2,92 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>La Cava - HACCP</title>
-  
-  <!-- Manifest & PWA -->
-  <link rel="manifest" href="./manifest.json">
-  <meta name="theme-color" content="#2b5c3a">
-  
-  <!-- Fogli di Stile -->
-  <link rel="stylesheet" href="./main.css">
-  <link rel="stylesheet" href="./styles.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>La Cava dei Vini - HACCP</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#059669">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f3f4f6;
+      color: #1f2937;
+    }
+    header {
+      background-color: #059669;
+      color: white;
+      padding: 12px 16px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 18px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      border-top: 1px solid #e5e7eb;
+      display: flex;
+      justify-content: space-around;
+      padding: 8px 0;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+      z-index: 100;
+    }
+    .nav-btn {
+      background: none;
+      border: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-size: 18px;
+      color: #4b5563;
+      cursor: pointer;
+      padding: 4px;
+    }
+    .nav-btn span {
+      font-size: 10px;
+      margin-top: 2px;
+      font-weight: 600;
+    }
+  </style>
 </head>
 <body>
 
-  <!-- Contenitore Principale App -->
-  <div id="root"></div>
+  <header>
+    🍷 La Cava dei Vini · HACCP
+  </header>
 
-  <!-- Caricamento Modulo JavaScript Principale -->
-  <script type="module" src="./js/app.js"></script>
+  <main id="app-container">
+    <!-- Le pagine vengono caricate qui dinamicamente -->
+  </main>
 
+  <nav>
+    <button onclick="navigate('ricevimento')" class="nav-btn">
+      📦<span>Merci</span>
+    </button>
+    <button onclick="navigate('temperature')" class="nav-btn">
+      🌡️<span>Frighi</span>
+    </button>
+    <button onclick="navigate('abbattimento')" class="nav-btn">
+      🧊<span>Abbattitore</span>
+    </button>
+    <button onclick="navigate('etichette')" class="nav-btn">
+      🏷️<span>Etichette</span>
+    </button>
+    <button onclick="navigate('pulizie')" class="nav-btn">
+      🧹<span>Pulizie</span>
+    </button>
+    <button onclick="navigate('ricette')" class="nav-btn">
+      📖<span>Ricette</span>
+    </button>
+  </nav>
+
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>
