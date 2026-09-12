@@ -1,6 +1,5 @@
 import { db, collection, addDoc, getDocs, doc, deleteDoc, query, orderBy, serverTimestamp } from './firebase.js';
 
-// Scheda ricetta predefinita (Vitello Tonnato CBT - 20 porzioni)
 const RICETTA_DEFAULT = {
   id: "default_vitello",
   nome: "Vitello Tonnato CBT (20 porzioni)",
@@ -45,14 +44,26 @@ export function renderRicettePage(container) {
         </button>
       </div>
 
-      <!-- Form Inserimento Nuova Ricetta -->
+      <!-- Importazione Automatica tramite AI / Screenshot -->
+      <div style="background: #f0fdf4; border: 1px dashed #059669; border-radius: 12px; padding: 14px; margin-bottom: 20px;">
+        <div style="font-size: 13px; font-weight: bold; color: #065f46; margin-bottom: 6px;">✨ Importazione Automatica con IA</div>
+        <div style="font-size: 12px; color: #047857; margin-bottom: 10px;">Carica uno screenshot/foto della ricetta per autocompilare la scheda tecnica:</div>
+        
+        <input type="file" id="ric-file-input" accept="image/*" style="display: none;">
+        <button id="btn-upload-foto" type="button" style="width: 100%; background: #10b981; color: white; border: none; padding: 10px; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer;">
+          📷 Scegli Screenshot / Scatta Foto
+        </button>
+        <div id="status-ai" style="display: none; font-size: 12px; color: #065f46; font-weight: bold; margin-top: 8px; text-align: center;">⚙️ Analisi ed elaborazione ricetta in corso...</div>
+      </div>
+
+      <!-- Form Inserimento Ricetta -->
       <div id="box-form-ricetta" style="display: none; background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 24px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-        <h3 style="font-size: 16px; font-weight: bold; margin-bottom: 12px; color: #111827;">Inserisci Nuova Scheda Ricetta</h3>
+        <h3 style="font-size: 16px; font-weight: bold; margin-bottom: 12px; color: #111827;">Scheda Ricetta</h3>
         
         <form id="form-ricetta" style="display: flex; flex-direction: column; gap: 12px;">
           <div>
             <label style="display: block; font-size: 12px; font-weight: bold; margin-bottom: 4px; color: #374151;">Nome Ricetta *</label>
-            <input type="text" id="ric-nome" required placeholder="Es. Guancia di Bovino al Barolo CBT" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box;">
+            <input type="text" id="ric-nome" required style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box;">
           </div>
 
           <div>
@@ -67,33 +78,33 @@ export function renderRicettePage(container) {
           </div>
 
           <div>
-            <label style="display: block; font-size: 12px; font-weight: bold; margin-bottom: 4px; color: #374151;">Tempi (Preparazione / Cottura / Abbattimento)</label>
-            <input type="text" id="ric-tempi" placeholder="Es. Prep: 30 min | Cottura: 12 ore CBT" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box;">
+            <label style="display: block; font-size: 12px; font-weight: bold; margin-bottom: 4px; color: #374151;">Tempi</label>
+            <input type="text" id="ric-tempi" placeholder="Prep: 30 min | Cottura: 12 ore CBT" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box;">
           </div>
 
           <div>
             <label style="display: block; font-size: 12px; font-weight: bold; margin-bottom: 4px; color: #374151;">Ingredienti (Sintassi: Ingrediente: Peso g) *</label>
-            <textarea id="ric-ingredienti" required rows="6" placeholder="Carne: 2000g&#10;Sale: 20g" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; font-family: monospace; font-size: 13px;"></textarea>
+            <textarea id="ric-ingredienti" required rows="6" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; font-family: monospace; font-size: 13px;"></textarea>
           </div>
 
           <div>
             <label style="display: block; font-size: 12px; font-weight: bold; margin-bottom: 4px; color: #374151;">Procedimento Numerato</label>
-            <textarea id="ric-procedimento" rows="5" placeholder="1. Preparare la materia prima...&#10;2. Confezionare sottovuoto..." style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; font-size: 13px;"></textarea>
+            <textarea id="ric-procedimento" rows="5" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; font-size: 13px;"></textarea>
           </div>
 
           <div>
             <label style="display: block; font-size: 12px; font-weight: bold; margin-bottom: 4px; color: #374151;">Impiattamento (Stile Trattoria Moderna)</label>
-            <input type="text" id="ric-impiattamento" placeholder="Descrizione del piatto finito..." style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box;">
+            <input type="text" id="ric-impiattamento" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box;">
           </div>
 
           <div>
-            <label style="display: block; font-size: 12px; font-weight: bold; margin-bottom: 4px; color: #374151;">Conservazione (Norme HACCP)</label>
-            <input type="text" id="ric-conservazione" placeholder="Es. 14 giorni in sottovuoto a 2°C" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box;">
+            <label style="display: block; font-size: 12px; font-weight: bold; margin-bottom: 4px; color: #374151;">Conservazione (HACCP)</label>
+            <input type="text" id="ric-conservazione" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box;">
           </div>
 
           <div>
             <label style="display: block; font-size: 12px; font-weight: bold; margin-bottom: 4px; color: #374151;">Criticità Tecniche</label>
-            <input type="text" id="ric-criticita" placeholder="Punti critici di controllo CCP..." style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box;">
+            <input type="text" id="ric-criticita" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box;">
           </div>
 
           <div style="display: flex; gap: 8px; margin-top: 8px;">
@@ -115,9 +126,58 @@ export function renderRicettePage(container) {
   const boxForm = document.getElementById('box-form-ricetta');
   const form = document.getElementById('form-ricetta');
   const listaRicette = document.getElementById('lista-ricette');
+  const fileInput = document.getElementById('ric-file-input');
+  const btnUpload = document.getElementById('btn-upload-foto');
+  const statusAi = document.getElementById('status-ai');
 
   btnNuova.addEventListener('click', () => { boxForm.style.display = 'block'; });
   btnAnnulla.addEventListener('click', () => { boxForm.style.display = 'none'; });
+  btnUpload.addEventListener('click', () => fileInput.click());
+
+  fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    statusAi.style.display = 'block';
+    statusAi.innerText = '⚙️ Lettura immagine in corso...';
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64Image = reader.result.split(',')[1];
+      statusAi.innerText = '🧠 Elaborazione con IA Gemini (scalatura 20 porzioni e conversione grammi)...';
+
+      try {
+        const response = await fetch('/api/parse-recipe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageBase64: base64Image })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          document.getElementById('ric-nome').value = data.ricetta.nome || '';
+          document.getElementById('ric-categoria').value = data.ricetta.categoria || 'Secondi';
+          document.getElementById('ric-tempi').value = data.ricetta.tempi || '';
+          document.getElementById('ric-ingredienti').value = data.ricetta.ingredienti || '';
+          document.getElementById('ric-procedimento').value = data.ricetta.procedimento || '';
+          document.getElementById('ric-impiattamento').value = data.ricetta.impiattamento || '';
+          document.getElementById('ric-conservazione').value = data.ricetta.conservazione || '';
+          document.getElementById('ric-criticita').value = data.ricetta.criticita || '';
+
+          boxForm.style.display = 'block';
+          statusAi.style.display = 'none';
+        } else {
+          alert('Errore nell’elaborazione: ' + (data.error || 'Risposta invalida dall’IA'));
+          statusAi.style.display = 'none';
+        }
+      } catch (err) {
+        alert('Errore di connessione API: ' + err.message);
+        statusAi.style.display = 'none';
+      }
+    };
+    reader.readAsDataURL(file);
+  });
 
   async function caricaRicette() {
     try {
@@ -137,7 +197,6 @@ export function renderRicettePage(container) {
       ricetteArr.forEach((ric) => {
         html += `
           <div style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); position: relative;">
-            
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
               <h3 style="font-size: 16px; font-weight: bold; color: #111827; margin: 0; padding-right: 30px;">${ric.nome}</h3>
               <span style="background-color: #f3f4f6; color: #374151; font-size: 11px; font-weight: bold; padding: 4px 8px; border-radius: 12px;">${ric.categoria || 'Generale'}</span>
@@ -186,7 +245,6 @@ export function renderRicettePage(container) {
 
       listaRicette.innerHTML = html;
 
-      // Event listener per i pulsanti Elimina
       document.querySelectorAll('.btn-elimina-ricetta').forEach((btn) => {
         btn.addEventListener('click', async (e) => {
           const docId = e.target.getAttribute('data-id');
