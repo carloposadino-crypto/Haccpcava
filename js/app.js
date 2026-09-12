@@ -1,4 +1,4 @@
-import { renderRicevimento } from './ricevimento.js';
+import { renderRicezioniPage } from './ricevimento.js';
 import { renderTemperaturePage } from './temperature.js';
 import { renderEtichettePage } from './etichette.js';
 import { renderPuliziePage } from './pulizie.js';
@@ -11,7 +11,7 @@ export function navigate(page) {
   container.innerHTML = '';
 
   if (page === 'ricevimento') {
-    renderRicevimento(container);
+    renderRicezioniPage(container);
   } else if (page === 'temperature') {
     renderTemperaturePage(container);
   } else if (page === 'etichette') {
@@ -23,13 +23,12 @@ export function navigate(page) {
   } else if (page === 'ricette') {
     renderRicettePage(container);
   } else {
-    renderRicevimento(container);
+    renderRicezioniPage(container);
   }
 
   window.scrollTo(0, 0);
 }
 
-// Espone la funzione globalmente per gli onclick dell'HTML
 window.navigate = navigate;
 
 document.addEventListener('DOMContentLoaded', () => {
