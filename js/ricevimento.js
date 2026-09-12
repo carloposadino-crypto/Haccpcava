@@ -1,4 +1,4 @@
-import { db, collection, addDoc, serverTimestamp } from './firebase.js';
+import { db, collection, addDoc, getDocs, query, orderBy, serverTimestamp } from './firebase.js';
 
 export function renderRicezioniPage(container) {
   container.innerHTML = `
@@ -19,7 +19,7 @@ export function renderRicezioniPage(container) {
         <input type="file" id="camera-input" accept="image/*" capture="environment" style="display: none;">
 
         <div id="ocr-spinner" style="display: none; margin-top: 15px; color: #2563eb; font-weight: 500;">
-          ⏳ Lettura ed estrazione dati dalla bolla in corso...
+          ⏳ Analisi OCR in corso con Gemini...
         </div>
 
         <div id="image-preview-container" style="display: none; margin-top: 15px;">
@@ -28,7 +28,7 @@ export function renderRicezioniPage(container) {
       </div>
 
       <!-- Modulo Dati Merci -->
-      <form id="form-ricevimento" style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+      <form id="form-ricevimento" style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 24px;">
         
         <div style="margin-bottom: 14px;">
           <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 4px; color: #374151;">Fornitore</label>
@@ -65,9 +65,24 @@ export function renderRicezioniPage(container) {
         </button>
       </form>
 
-      <div id="msg-conferma" style="display: none; margin-top: 15px; padding: 12px; background-color: #d1fae5; color: #065f46; border-radius: 8px; text-align: center; font-weight: bold;">
-        ✅ Scheda ricevimento merce salvata correttamente!
+      <div id="msg-conferma" style="display: none; margin-bottom: 15px; padding: 12px; background-color: #d1fae5; color: #065f46; border-radius: 8px; text-align: center; font-weight: bold;">
+        ✅ Registrazione merce salvata con successo!
       </div>
+
+      <!-- SEZIONE STORICO RICEVIMENTO MERCI -->
+      <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 24px 0;">
+      
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 style="font-size: 16px; font-weight: bold; color: #1f2937;">📋 Storico Ingressi Merci</h3>
+        <button id="btn-refresh-storico" style="background: none; border: none; color: #2563eb; font-weight: bold; cursor: pointer; font-size: 13px;">
+          🔄 Aggiorna
+        </button>
+      </div>
+
+      <div id="lista-storico-merci" style="display: flex; flex-direction: column; gap: 10px;">
+        <p style="color: #6b7280; font-size: 13px; text-align: center;">Caricamento storico in corso...</p>
+      </div>
+
     </div>
   `;
 
@@ -77,7 +92,10 @@ export function renderRicezioniPage(container) {
   const imagePreview = document.getElementById('image-preview');
   const form = document.getElementById('form-ricevimento');
   const msgConferma = document.getElementById('msg-conferma');
+  const listaStorico = document.getElementById('lista-storico-merci');
+  const btnRefresh = document.getElementById('btn-refresh-storico');
 
+  // Gestione OCR da fotocamera
   cameraInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -104,12 +122,12 @@ export function renderRicezioniPage(container) {
           if (d.numeroDocumento) document.getElementById('num-bolla').value = d.numeroDocumento;
 
           if (d.prodotti && d.prodotti.length > 0) {
-            const testoProdotti = d.prodotti.map(p => `${p.nome}: ${p.quantita}g (Lotto: ${p.lotto})`).join('\n');
+            const testoProdotti = d.prodotti.map(p => `${p.nome}: ${p.quantita} (Lotto: ${p.lotto || 'N/D'})`).join('\n');
             document.getElementById('dettaglio-prodotti').value = testoProdotti;
           }
         }
       } catch (err) {
-        console.error("Errore chiamata OCR:", err);
+        console.error("Errore lettura OCR:", err);
       } finally {
         ocrSpinner.style.display = 'none';
       }
@@ -117,6 +135,50 @@ export function renderRicezioniPage(container) {
     reader.readAsDataURL(file);
   });
 
+  // Funzione per caricare lo storico da Firestore
+  async function caricaStoricoMerci() {
+    listaStorico.innerHTML = '<p style="color: #6b7280; font-size: 13px; text-align: center;">Caricamento...</p>';
+    try {
+      const q = query(collection(db, 'ricevimento_merci'), orderBy('timestamp', 'desc'));
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        listaStorico.innerHTML = '<p style="color: #6b7280; font-size: 13px; text-align: center;">Nessun ricevimento merce registrato.</p>';
+        return;
+      }
+
+      let html = '';
+      querySnapshot.forEach((docSnap) => {
+        const item = docSnap.data();
+        let statusBadge = '🟢 Conforme';
+        if (item.esito === 'CON_RISERVA') statusBadge = '🟡 Riserva';
+        if (item.esito === 'RESPINTO') statusBadge = '🔴 Respinto';
+
+        html += `
+          <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; font-size: 13px;">
+            <div style="display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 4px;">
+              <span>${item.fornitore || 'Fornitore N/D'}</span>
+              <span>${statusBadge}</span>
+            </div>
+            <div style="color: #4b5563; font-size: 12px; margin-bottom: 6px;">
+              DDT: <strong>${item.numeroBolla || 'N/D'}</strong> | Temp: <strong>${item.temperatura ? item.temperatura + '°C' : 'N/D'}</strong>
+            </div>
+            <div style="background: #f9fafb; padding: 6px; border-radius: 4px; font-family: monospace; white-space: pre-wrap; font-size: 11px; color: #374151;">${item.prodotti || 'Nessun dettaglio prodotti'}</div>
+            <div style="font-size: 10px; color: #9ca3af; text-align: right; margin-top: 4px;">
+              ${item.dataOra || ''}
+            </div>
+          </div>
+        `;
+      });
+
+      listaStorico.innerHTML = html;
+    } catch (err) {
+      console.error("Errore caricamento storico:", err);
+      listaStorico.innerHTML = '<p style="color: #ef4444; font-size: 13px; text-align: center;">Errore durante il caricamento dello storico.</p>';
+    }
+  }
+
+  // Salvataggio nuovo modulo
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -136,8 +198,14 @@ export function renderRicezioniPage(container) {
       imagePreviewContainer.style.display = 'none';
       msgConferma.style.display = 'block';
       setTimeout(() => { msgConferma.style.display = 'none'; }, 3000);
+      caricaStoricoMerci(); // Ricarica subito lo storico
     } catch (err) {
       alert("Errore durante il salvataggio: " + err.message);
     }
   });
+
+  btnRefresh.addEventListener('click', caricaStoricoMerci);
+
+  // Caricamento iniziale dello storico
+  caricaStoricoMerci();
 }
