@@ -1,31 +1,36 @@
-import { db, collection, addDoc, getDocs, query, orderBy, serverTimestamp } from './firebase.js';
+import { db, collection, addDoc, getDocs, doc, deleteDoc, query, orderBy, serverTimestamp } from './firebase.js';
 
-// Scheda ricetta predefinita di esempio (Vitello Tonnato CBT - 20 porzioni)
+// Scheda ricetta predefinita (Vitello Tonnato CBT - 20 porzioni)
 const RICETTA_DEFAULT = {
+  id: "default_vitello",
   nome: "Vitello Tonnato CBT (20 porzioni)",
   categoria: "Secondi",
-  tempi: "Preparazione: 45 min | Cottura CBT: 4 ore | Abbattimento: 60 min",
-  ingredienti: `Girello / Magatello di Vitello: 2400g
-Olio Extravergine d'Oliva: 120g
+  tempi: "Preparazione: 40 min | Cottura CBT: 4 ore | Abbattimento: 60 min",
+  ingredienti: `Girello di Vitello: 2400g
+Olio Extravergine d'Oliva: 80g
 Sale Fino: 28g
-Pepe Nero Macinato: 4g
+Pepe Nero Macinato: 3g
 Ramerino Fresco: 10g
 Timo Fresco: 10g
-Tuorli d'Uovo Pastorizzati: 250g
-Tonnato (Capperi Dissalati): 80g
-Acciughe sott'olio: 60g
-Tonno Sott'olio Sgocciolato: 480g
-Succo di Limone: 40g
-Brodo vegetale freddo: 150g`,
-  procedimento: `1. Mondare e rifilare il girello di vitello, massaggiare con olio, sale (28g), pepe (4g) ed erbe aromatiche.
-2. Confezionare il girello sottovuoto al 99% in busta per cottura CBT.
-3. Immergere nel Roner preriscaldato a 58°C per 4 ore.
-4. A fine cottura, trasferire immediatamente la busta sigillata nell'abbattitore di temperatura (ciclo positivo +3°C al cuore entro 90 min).
-5. Per la salsa tonnata: frullare tuorli pastorizzati, tonno, acciughe, capperi e succo di limone. Emulsionare a filo con olio EVOO e regolare di densità con brodo freddo.
-6. Affettare sottilmente la carne abbattuta fredda all'affettatrice e nappare con la salsa.`,
-  impiattamento: "Stile trattoria moderna: disporre le fette di vitello leggermente sovrapposte a raggiera, nappare al centro con la salsa tonnata fluida, guarnire con un cappero peroncino e un germoglio o foglia di prezzemolo pulita.",
-  conservazione: "Prodotto CBT in busta sigillata sotto vuoto: 14 giorni a 0°C / +2°C. Salsa tonnata fresca in contenitore ermetico: 3 giorni a +2°C / +4°C.",
-  criticita: "Verificare la tenuta del sigillo sottovuoto prima del roner. Monitorare la temperatura dell'abbattitore per raggiungere +3°C al cuore entro 90 minuti. Non sovraccaricare la salsa di sale data la presenza di tonno e acciughe."
+Alloro Fresco: 4g
+Vino Bianco Secco: 100g
+Tonno Sott'olio Sgocciolato: 400g
+Acciughe Sott'olio: 50g
+Capperi Dissalati: 60g
+Tuorli d'Uovo Pastorizzati: 200g
+Succo di Limone: 30g
+Brodo Vegetale Freddo: 120g
+Olio di Semi di Girasole: 200g`,
+  procedimento: `1. Mondare e rifilare il girello di vitello da pellicole e grasso.
+2. Massaggiare con olio EVOO (80g), sale (28g), pepe (3g) ed erbe tritate.
+3. Inserire in busta da cottura con il vino bianco (100g) e sigillare al 99%.
+4. Cuocere nel Roner a 58°C per 4 ore.
+5. Trasferire subito in abbattitore (+3°C al cuore entro 90 min).
+6. Per la salsa: frullare tuorli pastorizzati, tonno, acciughe, capperi e limone. Emulsionare con olio di semi e regolare la densità con il brodo freddo.
+7. Affettare la carne fredda all'affettatrice e nappare con la salsa.`,
+  impiattamento: "Stile trattoria moderna: fette disposte a raggiera leggermente sovrapposte, nappa uniforme di salsa tonnata lucida, guarnizione con frutti di cappero a metà e filo d'olio EVOO.",
+  conservazione: "Carne CBT in busta sigillata: fino a 14 giorni a 0°C/+2°C. Carne affettata: max 48 ore. Salsa tonnata fresca: max 3 giorni a +2°C/+4°C.",
+  criticita: "Sigillatura sottovuoto perfetta prima del Roner. Abbattimento positivo rapido a +3°C (CCP). Attenzione alla sapidità della salsa prima di aggiungere ulteriore sale."
 };
 
 export function renderRicettePage(container) {
@@ -40,7 +45,7 @@ export function renderRicettePage(container) {
         </button>
       </div>
 
-      <!-- Form di inserimento nuova ricetta (inizialmente nascosto) -->
+      <!-- Form Inserimento Nuova Ricetta -->
       <div id="box-form-ricetta" style="display: none; background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 24px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
         <h3 style="font-size: 16px; font-weight: bold; margin-bottom: 12px; color: #111827;">Inserisci Nuova Scheda Ricetta</h3>
         
@@ -98,7 +103,7 @@ export function renderRicettePage(container) {
         </form>
       </div>
 
-      <!-- Contenitore Lista Ricette -->
+      <!-- Lista Ricette -->
       <div id="lista-ricette" style="display: flex; flex-direction: column; gap: 16px;">
         <p style="color: #6b7280; font-size: 13px; text-align: center;">Caricamento ricettario...</p>
       </div>
@@ -121,10 +126,9 @@ export function renderRicettePage(container) {
 
       let ricetteArr = [];
       querySnapshot.forEach((docSnap) => {
-        ricetteArr.push(docSnap.data());
+        ricetteArr.push({ id: docSnap.id, ...docSnap.data() });
       });
 
-      // Se il database è vuoto, mostra la scheda di default del Vitello Tonnato CBT
       if (ricetteArr.length === 0) {
         ricetteArr.push(RICETTA_DEFAULT);
       }
@@ -132,11 +136,18 @@ export function renderRicettePage(container) {
       let html = '';
       ricetteArr.forEach((ric) => {
         html += `
-          <div style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+          <div style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); position: relative;">
+            
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-              <h3 style="font-size: 16px; font-weight: bold; color: #111827; margin: 0;">${ric.nome}</h3>
+              <h3 style="font-size: 16px; font-weight: bold; color: #111827; margin: 0; padding-right: 30px;">${ric.nome}</h3>
               <span style="background-color: #f3f4f6; color: #374151; font-size: 11px; font-weight: bold; padding: 4px 8px; border-radius: 12px;">${ric.categoria || 'Generale'}</span>
             </div>
+
+            ${ric.id !== 'default_vitello' ? `
+              <button class="btn-elimina-ricetta" data-id="${ric.id}" style="position: absolute; top: 12px; right: 12px; background: #fee2e2; color: #dc2626; border: none; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer;">
+                🗑️ Elimina
+              </button>
+            ` : ''}
 
             <div style="font-size: 12px; color: #0284c7; font-weight: bold; margin-bottom: 12px;">
               ⏱️ ${ric.tempi || 'N/D'}
@@ -174,6 +185,22 @@ export function renderRicettePage(container) {
       });
 
       listaRicette.innerHTML = html;
+
+      // Event listener per i pulsanti Elimina
+      document.querySelectorAll('.btn-elimina-ricetta').forEach((btn) => {
+        btn.addEventListener('click', async (e) => {
+          const docId = e.target.getAttribute('data-id');
+          if (confirm("Sei sicuro di voler eliminare questa scheda ricetta?")) {
+            try {
+              await deleteDoc(doc(db, 'ricette', docId));
+              caricaRicette();
+            } catch (err) {
+              alert("Errore durante l'eliminazione: " + err.message);
+            }
+          }
+        });
+      });
+
     } catch (err) {
       console.error("Errore caricamento ricette:", err);
     }
