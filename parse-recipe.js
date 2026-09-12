@@ -6,7 +6,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { imageBase64 } = req.body;
+    const { imageBase64, recipeUrl } = req.body;
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    const prompt = `Analizza questa immagine di una ricetta ed estrai i dati strutturandoli in JSON rigido secondo queste regole professionali di cucina:
+    const promptText = `Analizza la ricetta fornita ed estrai i dati strutturandoli in JSON rigido secondo queste regole professionali di cucina:
 1. Adatta tutte le dosi degli ingredienti esattamente per 20 PORZIONI, dosando spezie/sale con senso professionale (senza moltiplicazioni lineari eccessive).
 2. Converti OGNI singola unità di misura esclusivamente in GRAMMI (g).
 3. Gli ingredienti devono essere formattati come elenco verticale con sintassi: "Nome Ingrediente: PesoInGrammig" (esempio: "Farina 00: 500g").
@@ -32,14 +32,40 @@ export default async function handler(req, res) {
   "criticita": "Punti critici di controllo CCP e suggerimenti tecnici"
 }`;
 
-    const imagePart = {
-      inlineData: {
-        data: imageBase64,
-        mimeType: "image/jpeg"
-      }
-    };
+    let contents = [];
 
-    const result = await model.generateContent([prompt, imagePart]);
+    if (imageBase64) {
+      contents = [
+        promptText,
+        {
+          inlineData: {
+            data: imageBase64,
+            mimeType: "image/jpeg"
+          }
+        }
+      ];
+    } else if (recipeUrl) {
+      // Fetch del contenuto del sito web
+      const webRes = await fetch(recipeUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+      });
+      if (!webRes.ok) {
+        throw new Error("Impossibile recuperare la pagina web dall'URL fornito.");
+      }
+      const htmlText = await webRes.text();
+      
+      // Pulizia base dell'HTML per estrarre solo il testo
+      const cleanText = htmlText.replace(/<script\b[^<]*>([\s\S]*?)<\/script>/gi, '')
+                                .replace(/<style\b[^<]*>([\s\S]*?)<\/style>/gi, '')
+                                .replace(/<[^>]+>/g, ' ')
+                                .slice(0, 15000); // Limite caratteri per performance
+
+      contents = [`${promptText}\n\nTesto estratto dalla pagina web:\n${cleanText}`];
+    } else {
+      return res.status(400).json({ error: 'Nessun dato fornito (immagine o URL mancante)' });
+    }
+
+    const result = await model.generateContent(contents);
     const responseText = result.response.text().replace(/```json|```/g, '').trim();
     const recipeData = JSON.parse(responseText);
 

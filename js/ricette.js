@@ -44,16 +44,29 @@ export function renderRicettePage(container) {
         </button>
       </div>
 
-      <!-- Importazione Automatica tramite AI / Screenshot -->
+      <!-- Importazione Automatica tramite AI / Screenshot / URL -->
       <div style="background: #f0fdf4; border: 1px dashed #059669; border-radius: 12px; padding: 14px; margin-bottom: 20px;">
         <div style="font-size: 13px; font-weight: bold; color: #065f46; margin-bottom: 6px;">✨ Importazione Automatica con IA</div>
-        <div style="font-size: 12px; color: #047857; margin-bottom: 10px;">Carica uno screenshot/foto della ricetta per autocompilare la scheda tecnica:</div>
+        <div style="font-size: 12px; color: #047857; margin-bottom: 10px;">Carica uno screenshot oppure incolla il link della ricetta per autocompilare la scheda tecnica:</div>
         
+        <!-- Opzione 1: File Screenshot -->
         <input type="file" id="ric-file-input" accept="image/*" style="display: none;">
-        <button id="btn-upload-foto" type="button" style="width: 100%; background: #10b981; color: white; border: none; padding: 10px; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer;">
+        <button id="btn-upload-foto" type="button" style="width: 100%; background: #10b981; color: white; border: none; padding: 10px; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer; margin-bottom: 10px;">
           📷 Scegli Screenshot / Scatta Foto
         </button>
-        <div id="status-ai" style="display: none; font-size: 12px; color: #065f46; font-weight: bold; margin-top: 8px; text-align: center;">⚙️ Analisi ed elaborazione ricetta in corso...</div>
+
+        <!-- Divider -->
+        <div style="text-align: center; font-size: 11px; color: #059669; margin: 6px 0; font-weight: bold;">OPPURE INCOLLA UN LINK</div>
+
+        <!-- Opzione 2: Input URL -->
+        <div style="display: flex; gap: 6px;">
+          <input type="url" id="ric-url-input" placeholder="https://sito-ricette.it/ricetta..." style="flex: 1; padding: 8px; border: 1px solid #a7f3d0; border-radius: 6px; font-size: 12px; box-sizing: border-box;">
+          <button id="btn-importa-url" type="button" style="background: #047857; color: white; border: none; padding: 8px 12px; border-radius: 6px; font-weight: bold; font-size: 12px; cursor: pointer;">
+            🔗 Importa
+          </button>
+        </div>
+
+        <div id="status-ai" style="display: none; font-size: 12px; color: #065f46; font-weight: bold; margin-top: 10px; text-align: center;">⚙️ Analisi ed elaborazione ricetta in corso...</div>
       </div>
 
       <!-- Form Inserimento Ricetta -->
@@ -128,12 +141,15 @@ export function renderRicettePage(container) {
   const listaRicette = document.getElementById('lista-ricette');
   const fileInput = document.getElementById('ric-file-input');
   const btnUpload = document.getElementById('btn-upload-foto');
+  const urlInput = document.getElementById('ric-url-input');
+  const btnImportaUrl = document.getElementById('btn-importa-url');
   const statusAi = document.getElementById('status-ai');
 
   btnNuova.addEventListener('click', () => { boxForm.style.display = 'block'; });
   btnAnnulla.addEventListener('click', () => { boxForm.style.display = 'none'; });
   btnUpload.addEventListener('click', () => fileInput.click());
 
+  // Gestione Importazione da Foto / Screenshot
   fileInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -144,40 +160,55 @@ export function renderRicettePage(container) {
     const reader = new FileReader();
     reader.onload = async () => {
       const base64Image = reader.result.split(',')[1];
-      statusAi.innerText = '🧠 Elaborazione con IA Gemini (scalatura 20 porzioni e conversione grammi)...';
-
-      try {
-        const response = await fetch('/api/parse-recipe', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageBase64: base64Image })
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-          document.getElementById('ric-nome').value = data.ricetta.nome || '';
-          document.getElementById('ric-categoria').value = data.ricetta.categoria || 'Secondi';
-          document.getElementById('ric-tempi').value = data.ricetta.tempi || '';
-          document.getElementById('ric-ingredienti').value = data.ricetta.ingredienti || '';
-          document.getElementById('ric-procedimento').value = data.ricetta.procedimento || '';
-          document.getElementById('ric-impiattamento').value = data.ricetta.impiattamento || '';
-          document.getElementById('ric-conservazione').value = data.ricetta.conservazione || '';
-          document.getElementById('ric-criticita').value = data.ricetta.criticita || '';
-
-          boxForm.style.display = 'block';
-          statusAi.style.display = 'none';
-        } else {
-          alert('Errore nell’elaborazione: ' + (data.error || 'Risposta invalida dall’IA'));
-          statusAi.style.display = 'none';
-        }
-      } catch (err) {
-        alert('Errore di connessione API: ' + err.message);
-        statusAi.style.display = 'none';
-      }
+      await inviaAIApi({ imageBase64: base64Image });
     };
     reader.readAsDataURL(file);
   });
+
+  // Gestione Importazione da Link URL
+  btnImportaUrl.addEventListener('click', async () => {
+    const url = urlInput.value.trim();
+    if (!url) {
+      alert("Inserisci un link URL valido.");
+      return;
+    }
+
+    statusAi.style.display = 'block';
+    statusAi.innerText = '⚙️ Lettura pagina web e conversione con IA...';
+    await inviaAIApi({ recipeUrl: url });
+  });
+
+  async function inviaAIApi(payload) {
+    try {
+      const response = await fetch('/api/parse-recipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        document.getElementById('ric-nome').value = data.ricetta.nome || '';
+        document.getElementById('ric-categoria').value = data.ricetta.categoria || 'Secondi';
+        document.getElementById('ric-tempi').value = data.ricetta.tempi || '';
+        document.getElementById('ric-ingredienti').value = data.ricetta.ingredienti || '';
+        document.getElementById('ric-procedimento').value = data.ricetta.procedimento || '';
+        document.getElementById('ric-impiattamento').value = data.ricetta.impiattamento || '';
+        document.getElementById('ric-conservazione').value = data.ricetta.conservazione || '';
+        document.getElementById('ric-criticita').value = data.ricetta.criticita || '';
+
+        boxForm.style.display = 'block';
+        statusAi.style.display = 'none';
+      } else {
+        alert('Errore nell’elaborazione: ' + (data.error || 'Risposta invalida dall’IA'));
+        statusAi.style.display = 'none';
+      }
+    } catch (err) {
+      alert('Errore di connessione API: ' + err.message);
+      statusAi.style.display = 'none';
+    }
+  }
 
   async function caricaRicette() {
     try {
