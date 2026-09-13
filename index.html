@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>La Cava dei Vini - HACCP</title>
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#059669">
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -17,14 +15,11 @@
     header {
       background-color: #059669;
       color: white;
-      padding: 12px 16px;
+      padding: 16px;
       text-align: center;
       font-weight: bold;
       font-size: 18px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      position: sticky;
-      top: 0;
-      z-index: 100;
     }
     nav {
       position: fixed;
@@ -32,12 +27,12 @@
       left: 0;
       right: 0;
       background: white;
-      border-top: 1px solid #e5e7eb;
       display: flex;
       justify-content: space-around;
       padding: 8px 0;
+      border-top: 1px solid #e5e7eb;
       box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
-      z-index: 100;
+      z-index: 1000;
     }
     .nav-btn {
       background: none;
@@ -45,15 +40,18 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      font-size: 18px;
-      color: #4b5563;
+      font-size: 11px;
+      color: #6b7280;
       cursor: pointer;
-      padding: 4px;
+      padding: 4px 8px;
+    }
+    .nav-btn.active {
+      color: #059669;
+      font-weight: bold;
     }
     .nav-btn span {
-      font-size: 10px;
-      margin-top: 2px;
-      font-weight: 600;
+      font-size: 18px;
+      margin-bottom: 2px;
     }
   </style>
 </head>
@@ -63,31 +61,75 @@
     🍷 La Cava dei Vini · HACCP
   </header>
 
-  <main id="app-container">
-    <!-- Le pagine vengono caricate qui dinamicamente -->
+  <main id="app-content">
+    <!-- Contenuto dinamico delle pagine -->
   </main>
 
   <nav>
-    <button onclick="navigate('ricevimento')" class="nav-btn">
-      📦<span>Merci</span>
+    <button class="nav-btn active" id="nav-merci">
+      <span>📦</span> Merci
     </button>
-    <button onclick="navigate('temperature')" class="nav-btn">
-      🌡️<span>Frighi</span>
+    <button class="nav-btn" id="nav-frighi">
+      <span>🌡️</span> Frighi
     </button>
-    <button onclick="navigate('abbattimento')" class="nav-btn">
-      🧊<span>Abbattitore</span>
+    <button class="nav-btn" id="nav-abbattitore">
+      <span>🧊</span> Abbattitore
     </button>
-    <button onclick="navigate('etichette')" class="nav-btn">
-      🏷️<span>Etichette</span>
+    <button class="nav-btn" id="nav-etichette">
+      <span>🏷️</span> Etichette
     </button>
-    <button onclick="navigate('pulizie')" class="nav-btn">
-      🧹<span>Pulizie</span>
+    <button class="nav-btn" id="nav-pulizie">
+      <span>🧹</span> Pulizie
     </button>
-    <button onclick="navigate('ricette')" class="nav-btn">
-      📖<span>Ricette</span>
+    <button class="nav-btn" id="nav-ricette">
+      <span>📖</span> Ricette
     </button>
   </nav>
 
-  <script type="module" src="js/app.js"></script>
+  <script type="module">
+    import { renderRicettePage } from './js/ricette.js';
+
+    const appContent = document.getElementById('app-content');
+    const navButtons = document.querySelectorAll('.nav-btn');
+
+    function setActiveTab(activeBtn) {
+      navButtons.forEach(btn => btn.classList.remove('active'));
+      if (activeBtn) activeBtn.classList.add('active');
+    }
+
+    document.getElementById('nav-ricette').addEventListener('click', (e) => {
+      setActiveTab(e.currentTarget);
+      renderRicettePage(appContent);
+    });
+
+    document.getElementById('nav-merci').addEventListener('click', (e) => {
+      setActiveTab(e.currentTarget);
+      appContent.innerHTML = `<div style="padding:20px; text-align:center;">📦 Sezione Merci</div>`;
+    });
+
+    document.getElementById('nav-frighi').addEventListener('click', (e) => {
+      setActiveTab(e.currentTarget);
+      appContent.innerHTML = `<div style="padding:20px; text-align:center;">🌡️ Sezione Frighi</div>`;
+    });
+
+    document.getElementById('nav-abbattitore').addEventListener('click', (e) => {
+      setActiveTab(e.currentTarget);
+      appContent.innerHTML = `<div style="padding:20px; text-align:center;">🧊 Sezione Abbattitore</div>`;
+    });
+
+    document.getElementById('nav-etichette').addEventListener('click', (e) => {
+      setActiveTab(e.currentTarget);
+      appContent.innerHTML = `<div style="padding:20px; text-align:center;">🏷️ Sezione Etichette</div>`;
+    });
+
+    document.getElementById('nav-pulizie').addEventListener('click', (e) => {
+      setActiveTab(e.currentTarget);
+      appContent.innerHTML = `<div style="padding:20px; text-align:center;">🧹 Sezione Pulizie</div>`;
+    });
+
+    // Pagina iniziale predefinita
+    renderRicettePage(appContent);
+    setActiveTab(document.getElementById('nav-ricette'));
+  </script>
 </body>
 </html>
