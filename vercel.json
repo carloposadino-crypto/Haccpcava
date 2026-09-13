@@ -16,4 +16,12 @@
       "dest": "/api/$1"
     }
   ]
+}{
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/api/parse-recipe",
+      "destination": "/api/parse-recipe.js"
+    }
+  ]
 }

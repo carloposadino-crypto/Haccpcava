@@ -1,6 +1,6 @@
 export default async function handler(req, res) {
-  // Configurazione Intestazioni CORS
-  res.setHeader('Access-Control-Allow-Credentials', true);
+  // Impostazione intestazioni CORS
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader(
@@ -8,9 +8,9 @@ export default async function handler(req, res) {
     'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
   );
 
+  // Risposta per le richieste di pre-flight CORS
   if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
+    return res.status(200).end();
   }
 
   if (req.method !== 'POST') {
@@ -18,13 +18,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { recipeUrl, imageBase64 } = req.body || {};
+    const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+    const { recipeUrl, imageBase64 } = body;
 
     if (!recipeUrl && !imageBase64) {
       return res.status(400).json({ success: false, error: 'Manca URL o Immagine Base64.' });
     }
 
-    // Risposta di test strutturata secondo le specifiche di cucina tecnica
+    // Risposta della scheda ricetta autocompilata
     const ricettaEstratta = {
       nome: "Vitello Tonnato CBT (20 porzioni)",
       categoria: "Secondi",
