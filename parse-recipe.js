@@ -1,20 +1,15 @@
 export default async function handler(req, res) {
-  // Impostazione intestazioni CORS
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-  );
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // Risposta per le richieste di pre-flight CORS
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ success: false, error: 'Metodo non consentito. Usa POST.' });
+    return res.status(405).json({ success: false, error: 'Metodo non consentito' });
   }
 
   try {
@@ -22,10 +17,9 @@ export default async function handler(req, res) {
     const { recipeUrl, imageBase64 } = body;
 
     if (!recipeUrl && !imageBase64) {
-      return res.status(400).json({ success: false, error: 'Manca URL o Immagine Base64.' });
+      return res.status(400).json({ success: false, error: 'Dati mancanti' });
     }
 
-    // Risposta della scheda ricetta autocompilata
     const ricettaEstratta = {
       nome: "Vitello Tonnato CBT (20 porzioni)",
       categoria: "Secondi",
@@ -57,13 +51,8 @@ Olio di Semi di Girasole: 200g`,
       criticita: "Sigillatura sottovuoto perfetta prima del Roner. Abbattimento positivo rapido a +3°C (CCP). Attenzione alla sapidità della salsa prima di aggiungere ulteriore sale."
     };
 
-    return res.status(200).json({
-      success: true,
-      ricetta: ricettaEstratta
-    });
-
+    return res.status(200).json({ success: true, ricetta: ricettaEstratta });
   } catch (err) {
-    console.error("Errore API parse-recipe:", err);
     return res.status(500).json({ success: false, error: err.message });
   }
 }
