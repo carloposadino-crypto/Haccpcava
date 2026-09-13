@@ -186,6 +186,16 @@ export function renderRicettePage(container) {
         body: JSON.stringify(payload)
       });
 
+      // Verifica se la risposta è JSON prima del parse
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const errorText = await response.text();
+        console.error("Risposta non JSON dal server:", errorText);
+        alert("Errore Server/Vercel (Risposta Non JSON). Verifica che l'API sia attiva.");
+        statusAi.style.display = 'none';
+        return;
+      }
+
       const data = await response.json();
 
       if (data.success) {
