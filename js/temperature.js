@@ -11,12 +11,12 @@ export async function renderTemperaturePage(container) {
           <div style="margin-bottom: 16px;">
             <label style="display: block; font-size: 13px; font-weight: 500; color: #475569; margin-bottom: 6px;">Attrezzatura / Unità Frigorifera</label>
             <select id="attrezzatura-select" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px;">
-              <option value="Frigo Passante 1 (0°C / +4°C)">Frigo Passante 1 (0°C / +4°C)</option>
-              <option value="Frigo Passante 2 (0°C / +4°C)">Frigo Passante 2 (0°C / +4°C)</option>
-              <option value="Cella Carni (-2°C / +2°C)">Cella Carni (-2°C / +2°C)</option>
-              <option value="Cella Verdure (+2°C / +6°C)">Cella Verdure (+2°C / +6°C)</option>
-              <option value="Freezer Conservazione (-22°C / -18°C)">Freezer Conservazione (-22°C / -18°C)</option>
-              <option value="Abbattitore">Abbattitore</option>
+              <option value="Banco Frigo">Banco Frigo (0°C / +4°C)</option>
+              <option value="Armadio Frigo">Armadio Frigo (0°C / +4°C)</option>
+              <option value="Frigo Magazzino">Frigo Magazzino (+2°C / +6°C)</option>
+              <option value="Frigo Vetrina">Frigo Vetrina (+2°C / +8°C)</option>
+              <option value="Freezer Pozzetto 1">Freezer Pozzetto 1 (-22°C / -18°C)</option>
+              <option value="Freezer Pozzetto 2">Freezer Pozzetto 2 (-22°C / -18°C)</option>
             </select>
           </div>
           <div style="margin-bottom: 20px;">
@@ -78,10 +78,10 @@ async function loadTemperatureHistory(container) {
     let html = '';
     querySnapshot.forEach((doc) => {
       const data = doc.data();
-      const nomeAttrezzatura = data.attrezzatura || data.attrezzaturaNome || data.frigo || data.unita || data.nome || data.attrezzatura_id || 'Attrezzatura';
+      const nomeAttrezzatura = data.attrezzatura || data.attrezzaturaNome || data.nomeFrigo || data.frigo || data.frigoNome || data.equipment || data.equipmentName || data.unita || data.unitaFrigorifera || data.nome || 'Attrezzatura';
       const valoreTemp = data.temperatura ?? data.temp ?? data.valore ?? data.gradi ?? data.grado ?? 'N/D';
       
-      let dataOra = data.data || data.date || data.ora;
+      let dataOra = data.data || data.date || data.ora || data.created_at || data.createdAt;
       if (!dataOra && data.timestamp) {
         if (typeof data.timestamp.toDate === 'function') {
           dataOra = data.timestamp.toDate().toLocaleString('it-IT');
@@ -89,6 +89,16 @@ async function loadTemperatureHistory(container) {
           dataOra = data.timestamp;
         }
       }
+      
+      if (typeof dataOra === 'string' && dataOra.includes('T')) {
+        try {
+          const d = new Date(dataOra);
+          if (!isNaN(d.getTime())) {
+            dataOra = d.toLocaleDateString('it-IT') + ' ' + d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+          }
+        } catch (e) {}
+      }
+      
       if (!dataOra) dataOra = 'Data non disponibile';
 
       html += `
