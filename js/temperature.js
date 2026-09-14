@@ -78,9 +78,18 @@ async function loadTemperatureHistory(container) {
     let html = '';
     querySnapshot.forEach((doc) => {
       const data = doc.data();
-      const nomeAttrezzatura = data.attrezzatura || data.attrezzaturaNome || data.frigo || 'Attrezzatura';
-      const valoreTemp = data.temperatura !== undefined ? data.temperatura : (data.temp !== undefined ? data.temp : 'N/D');
-      const dataOra = data.data || (data.timestamp?.toDate ? data.timestamp.toDate().toLocaleString('it-IT') : 'Data non disponibile');
+      const nomeAttrezzatura = data.attrezzatura || data.attrezzaturaNome || data.frigo || data.unita || data.nome || data.attrezzatura_id || 'Attrezzatura';
+      const valoreTemp = data.temperatura ?? data.temp ?? data.valore ?? data.gradi ?? data.grado ?? 'N/D';
+      
+      let dataOra = data.data || data.date || data.ora;
+      if (!dataOra && data.timestamp) {
+        if (typeof data.timestamp.toDate === 'function') {
+          dataOra = data.timestamp.toDate().toLocaleString('it-IT');
+        } else if (typeof data.timestamp === 'string') {
+          dataOra = data.timestamp;
+        }
+      }
+      if (!dataOra) dataOra = 'Data non disponibile';
 
       html += `
         <div style="border-left: 4px solid #10b981; background: #f8fafc; padding: 12px; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
