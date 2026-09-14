@@ -1,7 +1,7 @@
-export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+module.exports = async function handler(req, res) {
+  // Gestione CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
@@ -9,50 +9,77 @@ export default async function handler(req, res) {
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ success: false, error: 'Metodo non consentito' });
+    return res.status(405).json({ error: 'Metodo non consentito' });
   }
 
   try {
-    const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-    const { recipeUrl, imageBase64 } = body;
-
-    if (!recipeUrl && !imageBase64) {
-      return res.status(400).json({ success: false, error: 'Dati mancanti' });
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'Chiave API Gemini non configurata su Vercel (GEMINI_API_KEY).' });
     }
 
-    const ricettaEstratta = {
-      nome: "Vitello Tonnato CBT (20 porzioni)",
-      categoria: "Secondi",
-      tempi: "Preparazione: 40 min | Cottura CBT: 4 ore | Abbattimento: 60 min",
-      ingredienti: `Girello di Vitello: 2400g
-Olio Extravergine d'Oliva: 80g
-Sale Fino: 28g
-Pepe Nero Macinato: 3g
-Ramerino Fresco: 10g
-Timo Fresco: 10g
-Alloro Fresco: 4g
-Vino Bianco Secco: 100g
-Tonno Sott'olio Sgocciolato: 400g
-Acciughe Sott'olio: 50g
-Capperi Dissalati: 60g
-Tuorli d'Uovo Pastorizzati: 200g
-Succo di Limone: 30g
-Brodo Vegetale Freddo: 120g
-Olio di Semi di Girasole: 200g`,
-      procedimento: `1. Mondare e rifilare il girello di vitello da pellicole e grasso.
-2. Massaggiare con olio EVOO (80g), sale (28g), pepe (3g) ed erbe tritate.
-3. Inserire in busta da cottura con il vino bianco (100g) e sigillare al 99%.
-4. Cuocere nel Roner a 58°C per 4 ore.
-5. Trasferire subito in abbattitore (+3°C al cuore entro 90 min).
-6. Per la salsa: frullare tuorli pastorizzati, tonno, acciughe, capperi e limone. Emulsionare con olio di semi e regolare la densità con il brodo freddo.
-7. Affettare la carne fredda all'affettatrice e nappare con la salsa.`,
-      impiattamento: "Stile trattoria moderna: fette disposte a raggiera leggermente sovrapposte, nappa uniforme di salsa tonnata lucida, guarnizione con frutti di cappero a metà e filo d'olio EVOO.",
-      conservazione: "Carne CBT in busta sigillata: fino a 14 giorni a 0°C/+2°C. Carne affettata: max 48 ore. Salsa tonnata fresca: max 3 giorni a +2°C/+4°C.",
-      criticita: "Sigillatura sottovuoto perfetta prima del Roner. Abbattimento positivo rapido a +3°C (CCP). Attenzione alla sapidità della salsa prima di aggiungere ulteriore sale."
-    };
+    let body = req.body;
+    if (typeof body === 'string') {
+      try { body = JSON.parse(body); } catch (e) {}
+    }
 
-    return res.status(200).json({ success: true, ricetta: ricettaEstratta });
-  } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    const { url, image } = body || {};
+
+    let promptText = `Estrai la ricetta restituendo ESCLUSIVAMENTE un JSON valido senza formattazione Markdown con questa struttura esatta:
+{
+  "titolo": "Nome Ricetta",
+  "categoria": "Primi",
+  "porzioni": 10,
+  "tempoPrep": "30 min",
+  "tempoCottura": "2 ore",
+  "abbattimento": "60 min",
+  "ingredienti": ["Ingrediente 1: quantità", "Ingrediente 2: quantità"],
+  "procedimento": ["Passaggio 1", "Passaggio 2"],
+  "haccpNote": "Istruzioni conservazione e allergeni"
+}`;
+
+    if (url) {
+      promptText += `\n\nAnalizza questa ricetta dal link: ${url}`;
+    }
+
+    const parts = [{ text: promptText }];
+
+    if (image) {
+      const base64Data = image.includes(',') ? image.split(',')[1] : image;
+      const mimeType = image.split(';')[0].split(':')[1] || 'image/jpeg';
+      parts.push({
+        inline_data: {
+          mime_type: mimeType,
+          data: base64Data
+        }
+      });
+    }
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts }] })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return res.status(response.status).json({ error: data.error?.message || 'Errore nella chiamata a Gemini API' });
+    }
+
+    const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!responseText) {
+      return res.status(500).json({ error: 'Nessun testo generato dall\'IA.' });
+    }
+
+    const cleanJson = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const recipeData = JSON.parse(cleanJson);
+
+    return res.status(200).json(recipeData);
+
+  } catch (error) {
+    console.error("Errore API backend:", error);
+    return res.status(500).json({ error: "Errore interno server: " + error.message });
   }
-}
+};
