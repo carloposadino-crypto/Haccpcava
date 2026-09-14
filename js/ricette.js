@@ -46,7 +46,7 @@ export function renderRicettePage(container) {
 
       <div style="background: #f0fdf4; border: 1px dashed #059669; border-radius: 12px; padding: 14px; margin-bottom: 20px;">
         <div style="font-size: 13px; font-weight: bold; color: #065f46; margin-bottom: 6px;">✨ Importazione Automatica con IA</div>
-        <div style="font-size: 12px; color: #047857; margin-bottom: 10px;">Carica uno screenshot oppure incolla il link della ricetta per autocompilare la scheda tecnica:</div>
+        <div style="font-size: 12px; color: #047857; margin-bottom: 10px;">Carica uno screenshot oppure incolla il link della ricetta:</div>
         
         <input type="file" id="ric-file-input" accept="image/*" style="display: none;">
         <button id="btn-upload-foto" type="button" style="width: 100%; background: #10b981; color: white; border: none; padding: 10px; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer; margin-bottom: 10px;">
@@ -62,7 +62,7 @@ export function renderRicettePage(container) {
           </button>
         </div>
 
-        <div id="status-ai" style="display: none; font-size: 12px; color: #065f46; font-weight: bold; margin-top: 10px; text-align: center;">⚙️ Analisi ed elaborazione ricetta in corso...</div>
+        <div id="status-ai" style="display: none; font-size: 12px; color: #065f46; font-weight: bold; margin-top: 10px; text-align: center;">⚙️ Elaborazione con IA in corso...</div>
       </div>
 
       <div id="box-form-ricetta" style="display: none; background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 24px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
@@ -92,7 +92,7 @@ export function renderRicettePage(container) {
 
           <div>
             <label style="display: block; font-size: 12px; font-weight: bold; margin-bottom: 4px; color: #374151;">Ingredienti (Sintassi: Ingrediente: Peso g) *</label>
-            <textarea id="ric-ingredienti" required rows="6" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; font-family: monospace; font-size: 13px;"></textarea>
+            <textarea id="ric-ingredienti" required rows="8" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; font-family: monospace; font-size: 13px;"></textarea>
           </div>
 
           <div>
@@ -148,11 +148,14 @@ export function renderRicettePage(container) {
     if (!file) return;
 
     statusAi.style.display = 'block';
-    statusAi.innerText = '⚙️ Lettura immagine in corso...';
-    
-    setTimeout(() => {
-      eseguiParsingDiretto();
-    }, 1000);
+    statusAi.innerText = '⚙️ Analisi dello screenshot in corso...';
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64Image = reader.result.split(',')[1];
+      await inviaAIA({ image: base64Image });
+    };
+    reader.readAsDataURL(file);
   });
 
   btnImportaUrl.addEventListener('click', async () => {
@@ -163,56 +166,41 @@ export function renderRicettePage(container) {
     }
 
     statusAi.style.display = 'block';
-    statusAi.innerText = '⚙️ Elaborazione della pagina web...';
-    
-    setTimeout(() => {
-      eseguiParsingDiretto();
-    }, 1000);
+    statusAi.innerText = '⚙️ Recupero ed elaborazione ricetta dal link...';
+
+    await inviaAIA({ url: url });
   });
 
-  function eseguiParsingDiretto() {
-    const dataRicetta = {
-      nome: "Vitello Tonnato CBT (20 porzioni)",
-      categoria: "Secondi",
-      tempi: "Preparazione: 40 min | Cottura CBT: 4 ore | Abbattimento: 60 min",
-      ingredienti: `Girello di Vitello: 2400g
-Olio Extravergine d'Oliva: 80g
-Sale Fino: 28g
-Pepe Nero Macinato: 3g
-Ramerino Fresco: 10g
-Timo Fresco: 10g
-Alloro Fresco: 4g
-Vino Bianco Secco: 100g
-Tonno Sott'olio Sgocciolato: 400g
-Acciughe Sott'olio: 50g
-Capperi Dissalati: 60g
-Tuorli d'Uovo Pastorizzati: 200g
-Succo di Limone: 30g
-Brodo Vegetale Freddo: 120g
-Olio di Semi di Girasole: 200g`,
-      procedimento: `1. Mondare e rifilare il girello di vitello da pellicole e grasso.
-2. Massaggiare con olio EVOO (80g), sale (28g), pepe (3g) ed erbe tritate.
-3. Inserire in busta da cottura con il vino bianco (100g) e sigillare al 99%.
-4. Cuocere nel Roner a 58°C per 4 ore.
-5. Trasferire subito in abbattitore (+3°C al cuore entro 90 min).
-6. Per la salsa: frullare tuorli pastorizzati, tonno, acciughe, capperi e limone. Emulsionare con olio di semi e regolare la densità con il brodo freddo.
-7. Affettare la carne fredda all'affettatrice e nappare con la salsa.`,
-      impiattamento: "Stile trattoria moderna: fette disposte a raggiera leggermente sovrapposte, nappa uniforme di salsa tonnata lucida, guarnizione con frutti di cappero a metà e filo d'olio EVOO.",
-      conservazione: "Carne CBT in busta sigillata: fino a 14 giorni a 0°C/+2°C. Carne affettata: max 48 ore. Salsa tonnata fresca: max 3 giorni a +2°C/+4°C.",
-      criticita: "Sigillatura sottovuoto perfetta prima del Roner. Abbattimento positivo rapido a +3°C (CCP). Attenzione alla sapidità della salsa prima di aggiungere ulteriore sale."
-    };
+  async function inviaAIA(payload) {
+    try {
+      const res = await fetch('/api/parse-recipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
 
-    document.getElementById('ric-nome').value = dataRicetta.nome;
-    document.getElementById('ric-categoria').value = dataRicetta.categoria;
-    document.getElementById('ric-tempi').value = dataRicetta.tempi;
-    document.getElementById('ric-ingredienti').value = dataRicetta.ingredienti;
-    document.getElementById('ric-procedimento').value = dataRicetta.procedimento;
-    document.getElementById('ric-impiattamento').value = dataRicetta.impiattamento;
-    document.getElementById('ric-conservazione').value = dataRicetta.conservazione;
-    document.getElementById('ric-criticita').value = dataRicetta.criticita;
+      const data = await res.json();
 
-    boxForm.style.display = 'block';
-    statusAi.style.display = 'none';
+      if (!res.ok) {
+        throw new Error(data.error || "Errore durante l'elaborazione");
+      }
+
+      document.getElementById('ric-nome').value = data.nome || '';
+      document.getElementById('ric-categoria').value = data.categoria || 'Secondi';
+      document.getElementById('ric-tempi').value = data.tempi || '';
+      document.getElementById('ric-ingredienti').value = data.ingredienti || '';
+      document.getElementById('ric-procedimento').value = data.procedimento || '';
+      document.getElementById('ric-impiattamento').value = data.impiattamento || '';
+      document.getElementById('ric-conservazione').value = data.conservazione || '';
+      document.getElementById('ric-criticita').value = data.criticita || '';
+
+      boxForm.style.display = 'block';
+      statusAi.style.display = 'none';
+    } catch (err) {
+      console.error(err);
+      alert("Errore durante la lettura: " + err.message);
+      statusAi.style.display = 'none';
+    }
   }
 
   async function caricaRicette() {
