@@ -1,12 +1,12 @@
-import { db, collection, getDocs, query, where } from './firebase.js';
-import { renderTemperaturePage } from './temperature.js';
-import { renderRegistroPage } from './registro.js';
-import { renderPuliziePage } from './pulizie.js';
-import { renderAnomaliePage } from './anomalie.js';
-import { renderProdottiPage } from './prodotti.js';
-import { renderRicezioniPage } from './ricevimento.js';
-import { renderStoricoPage } from './storico.js';
-import { renderRicettePage } from './ricette.js';
+import { db, collection, getDocs, query, where } from './js/firebase.js';
+import { renderTemperaturePage } from './js/temperature.js';
+import { renderRegistroPage } from './js/registro.js';
+import { renderPuliziePage } from './js/pulizie.js';
+import { renderAnomaliePage } from './js/anomalie.js';
+import { renderProdottiPage } from './js/prodotti.js';
+import { renderRicezioniPage } from './js/ricevimento.js';
+import { renderStoricoPage } from './js/storico.js';
+import { renderRicettePage } from './js/ricette.js';
 
 let currentTab = 'oggi';
 
