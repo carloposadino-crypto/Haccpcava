@@ -1,6 +1,6 @@
 // Configurazione del progetto Firebase "haccpcava"
 export const firebaseConfig = {
-  apiKey: "AIzaSyC8g8CQ9z7E0fRj4CKugscMquB7uXwIuGA",
+  apiKey: "AIzaSyC8g8CQ9z7EOfRj4CKUgscMquB7uXwIuGA",
   authDomain: "haccpcava.firebaseapp.com",
   projectId: "haccpcava",
   storageBucket: "haccpcava.firebasestorage.app",
