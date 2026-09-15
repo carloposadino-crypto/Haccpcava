@@ -30,7 +30,7 @@ service cloud.firestore {
     }
 
     // ---- configurazione: lettura libera, scrittura riservata al responsabile ----
-    match /apparecchiature/{id} {
+    match /attrezzature/{id} {
       allow read: if autenticato();
       allow write: if eResponsabile();
     }
