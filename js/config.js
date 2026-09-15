@@ -1,9 +1,8 @@
-// Configurazioni progetto Firebase
 export const firebaseConfig = {
-  apiKey: "INSERISCI_QUI_LA_TUA_API_KEY",
+  apiKey: "METTI_QUI_LA_TUA_APIKEY",
   authDomain: "haccpcava.firebaseapp.com",
   projectId: "haccpcava",
   storageBucket: "haccpcava.appspot.com",
-  messagingSenderId: "INSERISCI_QUI_SENDER_ID",
-  appId: "INSERISCI_QUI_APP_ID"
+  messagingSenderId: "METTI_QUI_IL_TUO_SENDERID",
+  appId: "METTI_QUI_IL_TUO_APPID"
 };
