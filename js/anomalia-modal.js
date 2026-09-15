@@ -2,8 +2,8 @@
 // "!" sempre visibile nella tabbar. Si inserisce direttamente nel <body>
 // così può essere aperta da qualunque schermata.
 
-import { aggiungi } from '../lib/store.js';
-import { segnalaScrittura } from '../lib/sync-status.js';
+import { aggiungi } from './store.js';
+import { segnalaScrittura } from './sync-status.js';
 
 const CATEGORIE = [
   ['frigorifero', 'Frigorifero'],

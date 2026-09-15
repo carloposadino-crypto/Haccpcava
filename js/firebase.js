@@ -1,8 +1,25 @@
-const firebaseConfig = {
-  apiKey: "AIzaSyC8g8CQ9z7E0fRj4CKugscMquB7uXwIuGA",
-  authDomain: "haccpcava.firebaseapp.com",
-  projectId: "haccpcava",
-  storageBucket: "haccpcava.firebasestorage.app",
-  messagingSenderId: "569829408620",
-  appId: "1:569829408620:web:d190af863d11b45644fd49"
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
+import {
+  getFirestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc,
+  query, where, orderBy, serverTimestamp,
+} from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
+import {
+  getAuth, setPersistence, browserLocalPersistence,
+} from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
+import { firebaseConfig } from './config.js';
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+// Sessione persistente sul dispositivo: non richiede il login ad ogni
+// apertura dell'app (utile su un tablet/telefono condiviso in cucina).
+setPersistence(auth, browserLocalPersistence).catch((err) => {
+  console.error('Impossibile impostare la persistenza della sessione:', err);
+});
+
+export {
+  db, auth,
+  collection, addDoc, getDocs, doc, deleteDoc, updateDoc,
+  query, where, orderBy, serverTimestamp,
 };

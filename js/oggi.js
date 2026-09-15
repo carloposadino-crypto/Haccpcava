@@ -1,4 +1,4 @@
-import { leggiTutti, inizioEFineGiorno, oggiISO, where, orderBy } from '../../lib/store.js';
+import { leggiTutti, inizioEFineGiorno, oggiISO, where, orderBy } from './store.js';
 
 export async function renderOggi(container, profilo, vaiA) {
   const { inizio, fine } = inizioEFineGiorno(oggiISO());
@@ -23,7 +23,7 @@ export async function renderOggi(container, profilo, vaiA) {
   const anomalie = await leggiTutti('non_conformita', [where('aperto_il', '>=', inizio), where('aperto_il', '<=', fine)]);
 
   container.innerHTML = `
-    <div class="check-row" data-vai="controlli">
+    <div class="check-row" data-vai="temperature">
       <span class="dot ${apparecchiatureRilevate.size === 0 ? 'pending' : fuoriRange ? 'warn' : apparecchiatureRilevate.size === apparecchiature.length ? 'ok' : 'pending'}"></span>
       <div class="rt">
         <div class="t">Temperature frigoriferi</div>
@@ -31,7 +31,7 @@ export async function renderOggi(container, profilo, vaiA) {
       </div>
       <span class="chev">›</span>
     </div>
-    <div class="check-row" data-vai="controlli">
+    <div class="check-row" data-vai="registro">
       <span class="dot ${processiOggi > 0 ? 'ok' : 'pending'}"></span>
       <div class="rt">
         <div class="t">Cotture / abbattimenti / rigenerazioni</div>

@@ -1,53 +1,68 @@
-import { db, collection, addDoc, serverTimestamp } from './firebase.js';
+// Elenco e gestione delle non conformità. La *segnalazione* di una nuova
+// anomalia si fa dal pulsante rosso "!" sempre visibile in alto (vedi
+// anomalia-modal.js) — questa pagina serve a rivedere le segnalazioni
+// aperte e chiuderle con l'azione correttiva svolta.
 
-export function renderAnomaliePage(container) {
-  const today = new Date().toISOString().split('T')[0];
+import { leggiTutti, aggiorna, where, orderBy } from './store.js';
+
+export async function renderAnomaliePage(container, profilo) {
+  container.innerHTML = `<div class="empty-state">Caricamento…</div>`;
+
+  const aperte = await leggiTutti('non_conformita', [where('stato', '==', 'aperta'), orderBy('aperto_il', 'desc')]);
+  const chiuseRecenti = (await leggiTutti('non_conformita', [where('stato', '==', 'chiusa'), orderBy('aperto_il', 'desc')])).slice(0, 10);
+
   container.innerHTML = `
-    <div class="page-header">
-      <h2>Anomalie & Azioni Correttive</h2>
-      <p class="date-subtitle">Registro guasti o non conformità</p>
-    </div>
-    <form id="anomalie-form" class="card" style="display: flex; flex-direction: column; gap: 12px;">
-      <label style="font-weight: bold; font-size: 14px;">Tipo Problema</label>
-      <select id="anomalia_tipo">
-        <option value="Guasto Apparecchiatura">Guasto Apparecchiatura</option>
-        <option value="Temperatura Fuori Range">Temperatura Fuori Range</option>
-        <option value="Non Conformità Merce">Non Conformità Merce</option>
-        <option value="Altro">Altro</option>
-      </select>
+    <div class="top-bar"><h2>Anomalie</h2></div>
 
-      <label style="font-weight: bold; font-size: 14px;">Descrizione Anomalia</label>
-      <textarea id="anomalia_desc" placeholder="Descrivi il problema..." required></textarea>
+    <h3 style="font-size:14px; color:#b91c1c; margin-bottom:8px;">Aperte (${aperte.length})</h3>
+    ${aperte.length === 0 ? '<div class="empty-state">Nessuna anomalia aperta. 👍</div>' : aperte.map((a) => `
+      <div class="list-card" data-id="${a.id}">
+        <div style="padding-top:12px;">
+          <span class="badge badge-warn">${a.categoria || 'altro'}</span>
+          <div style="margin:8px 0; font-size:14px; color:#1e293b;">${a.problema}</div>
+          <label class="field-label">Azione correttiva</label>
+          <textarea class="an-azione" placeholder="Cosa è stato fatto per risolvere"></textarea>
+          <button class="btn btn-primary btn-block an-chiudi" style="margin-bottom:12px;">Chiudi anomalia</button>
+        </div>
+      </div>
+    `).join('')}
 
-      <label style="font-weight: bold; font-size: 14px;">Azione Correttiva Intrapresa</label>
-      <textarea id="anomalia_azione" placeholder="Es. Sbrinamento forzato, chiamata tecnico..." required></textarea>
-
-      <button type="button" id="btn-save-anomalia" style="padding: 12px; background-color: #2b5c3a; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 5px;">Registra Anomalia</button>
-    </form>
+    ${chiuseRecenti.length ? `
+      <h3 style="font-size:14px; color:#64748b; margin: 16px 0 8px;">Chiuse di recente</h3>
+      <div class="list-card">
+        ${chiuseRecenti.map((a) => `
+          <div class="check-row" style="cursor:default;">
+            <span class="dot ok"></span>
+            <div class="rt">
+              <div class="t">${a.problema}</div>
+              <div class="s">${a.azione || ''}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    ` : ''}
   `;
 
-  container.querySelector('#btn-save-anomalia').addEventListener('click', async () => {
-    const desc = container.querySelector('#anomalia_desc').value.trim();
-    const azione = container.querySelector('#anomalia_azione').value.trim();
-    if (!desc || !azione) {
-      alert('Compila tutti i campi obbligatori.');
-      return;
-    }
-
-    try {
-      await addDoc(collection(db, "anomalie"), {
-        data: today,
-        tipo: container.querySelector('#anomalia_tipo').value,
-        descrizione: desc,
-        azione_correttiva: azione,
-        stato: 'Risolta',
-        timestamp: serverTimestamp()
-      });
-      alert('Anomalia registrata!');
-      container.querySelector('#anomalie-form').reset();
-    } catch (err) {
-      console.error(err);
-      alert('Errore salvataggio.');
-    }
+  aperte.forEach((a) => {
+    const card = container.querySelector(`[data-id="${a.id}"]`);
+    card.querySelector('.an-chiudi').addEventListener('click', async (e) => {
+      const azione = card.querySelector('.an-azione').value.trim();
+      if (!azione) { alert('Descrivi l\'azione correttiva prima di chiudere.'); return; }
+      e.currentTarget.disabled = true;
+      try {
+        await aggiorna('non_conformita', a.id, {
+          azione,
+          esito: 'risolto',
+          stato: 'chiusa',
+          verifica: profilo.id,
+          chiuso_il: new Date(),
+        });
+        renderAnomaliePage(container, profilo);
+      } catch (err) {
+        console.error(err);
+        alert('Errore durante il salvataggio.');
+        e.currentTarget.disabled = false;
+      }
+    });
   });
 }

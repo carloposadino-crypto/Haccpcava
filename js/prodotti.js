@@ -1,48 +1,79 @@
-export function renderProdottiPage(container) {
-  const html = `
-    <div class="page-header">
-      <h2>Anagrafica Prodotti e Schede Scheda Lotto</h2>
-      <p class="date-subtitle">Tracciabilità e Conservazione</p>
+// Anagrafica Prodotti: nome, ingredienti, conservazione e allergeni
+// (i 14 allergeni previsti dalla normativa UE 1169/2011).
+
+import { leggiTutti, aggiungi, orderBy } from './store.js';
+
+const ALLERGENI = [
+  'Glutine', 'Crostacei', 'Uova', 'Pesce', 'Arachidi', 'Soia', 'Latte',
+  'Frutta a guscio', 'Sedano', 'Senape', 'Sesamo', 'Anidride solforosa/Solfiti',
+  'Lupini', 'Molluschi',
+];
+
+export async function renderProdottiPage(container) {
+  container.innerHTML = `<div class="empty-state">Caricamento…</div>`;
+  const prodotti = await leggiTutti('prodotti', [orderBy('creato_il', 'desc')]).catch(() => []);
+
+  container.innerHTML = `
+    <div class="top-bar"><h2>Prodotti</h2></div>
+
+    <div class="list-card">
+      <label class="field-label">Denominazione</label>
+      <input type="text" id="pr-nome" placeholder="Es. Vitello Tonnato CBT">
+      <label class="field-label">Ingredienti</label>
+      <textarea id="pr-ingredienti" placeholder="Elenco ingredienti"></textarea>
+      <label class="field-label">Conservazione</label>
+      <textarea id="pr-conservazione" placeholder="Es. +2°C/+4°C, max 14 giorni sottovuoto"></textarea>
+      <label class="field-label">Allergeni presenti</label>
+      <div class="chip-group" id="pr-allergeni">
+        ${ALLERGENI.map((a) => `<span class="chip" data-allergene="${a}">${a}</span>`).join('')}
+      </div>
+      <button class="btn btn-primary btn-block" id="pr-salva">Salva prodotto</button>
     </div>
 
-    <form id="prodotti-form" style="display: flex; flex-direction: column; gap: 15px; padding: 10px 0;">
-      <div class="card" style="display: flex; flex-direction: column; gap: 8px;">
-        <label style="font-weight: bold;">Nome Prodotto / Preparazione</label>
-        <input type="text" name="nome_prodotto" placeholder="Es. Fondo Bruno, Nocciole Tostate..." style="padding: 10px; font-size: 16px; border-radius: 6px; border: 1px solid #ccc;">
+    <h3 style="font-size:14px; color:#64748b; margin: 16px 0 8px;">Elenco (${prodotti.length})</h3>
+    ${prodotti.length === 0 ? '<div class="empty-state">Nessun prodotto ancora inserito.</div>' : `
+      <div class="list-card">
+        ${prodotti.map((p) => `
+          <div class="check-row" style="cursor:default;">
+            <div class="rt">
+              <div class="t">${p.denominazione}</div>
+              <div class="s">${(p.allergeni || []).map((a) => a.allergene).join(', ') || 'Nessun allergene indicato'}</div>
+            </div>
+            <span class="badge ${p.stato_verifica === 'verificato' ? 'badge-ok' : 'badge-pending'}">${p.stato_verifica === 'verificato' ? 'verificato' : 'da verificare'}</span>
+          </div>
+        `).join('')}
       </div>
-
-      <div class="card" style="display: flex; flex-direction: column; gap: 8px;">
-        <label style="font-weight: bold;">Codice Lotto Assegnato</label>
-        <input type="text" name="lotto" placeholder="Es. L-20260908" style="padding: 10px; font-size: 16px; border-radius: 6px; border: 1px solid #ccc;">
-      </div>
-
-      <div class="card" style="display: flex; flex-direction: column; gap: 8px;">
-        <label style="font-weight: bold;">Data Scadenza / TMC Interno</label>
-        <input type="date" name="scadenza" style="padding: 10px; font-size: 16px; border-radius: 6px; border: 1px solid #ccc; background: #fff;">
-      </div>
-
-      <div class="card" style="display: flex; flex-direction: column; gap: 8px;">
-        <label style="font-weight: bold;">Stato Conservazione</label>
-        <select name="conservazione" style="padding: 10px; font-size: 16px; border-radius: 6px; border: 1px solid #ccc; background: #fff;">
-          <option value="sottovuoto_frigo">Sottovuoto Refrigerato (+2°C)</option>
-          <option value="congelato">Congelato / Abbattuto (-18°C)</option>
-          <option value="secco">Ambiente / Secco</option>
-        </select>
-      </div>
-
-      <button type="button" id="btn-save-prodotto" style="padding: 14px; background-color: #2b5c3a; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer;">
-        Salva Prodotto in Anagrafica
-      </button>
-    </form>
+    `}
   `;
 
-  if (container) {
-    container.innerHTML = html;
-    const btn = container.querySelector('#btn-save-prodotto');
-    if (btn) btn.addEventListener('click', () => {
-      alert('Prodotto aggiunto alla tracciabilità!');
-      container.querySelector('#prodotti-form').reset();
+  const selezionati = new Set();
+  container.querySelectorAll('#pr-allergeni .chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      const nome = chip.dataset.allergene;
+      if (selezionati.has(nome)) { selezionati.delete(nome); chip.classList.remove('selected'); }
+      else { selezionati.add(nome); chip.classList.add('selected'); }
     });
-  }
-  return html;
+  });
+
+  container.querySelector('#pr-salva').addEventListener('click', async (e) => {
+    const denominazione = container.querySelector('#pr-nome').value.trim();
+    if (!denominazione) { alert('Inserisci la denominazione del prodotto.'); return; }
+
+    e.currentTarget.disabled = true;
+    try {
+      await aggiungi('prodotti', {
+        denominazione,
+        ingredienti: container.querySelector('#pr-ingredienti').value,
+        conservazione: container.querySelector('#pr-conservazione').value,
+        stato_verifica: 'non_verificato',
+        fonte: 'manuale',
+        allergeni: [...selezionati].map((allergene) => ({ allergene, tipo_presenza: 'ingrediente' })),
+      }, 'creato_il');
+      renderProdottiPage(container);
+    } catch (err) {
+      console.error(err);
+      alert('Errore durante il salvataggio.');
+      e.currentTarget.disabled = false;
+    }
+  });
 }

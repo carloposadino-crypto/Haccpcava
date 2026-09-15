@@ -1,119 +1,80 @@
-import { db, collection, getDocs, addDoc, query, orderBy, limit } from './firebase.js';
+// Registro Temperature: legge le apparecchiature attive (frigo/freezer)
+// configurate dal responsabile, e permette di registrare la lettura di
+// oggi per ciascuna, segnalando subito se è fuori dal range previsto.
 
-export async function renderTemperaturePage(container) {
+import { leggiTutti, aggiungi, where, orderBy, oggiISO, inizioEFineGiorno } from './store.js';
+
+export async function renderTemperaturePage(container, profilo) {
+  container.innerHTML = `<div class="empty-state">Caricamento apparecchiature…</div>`;
+
+  const apparecchiature = await leggiTutti('apparecchiature', [where('attivo', '==', true), orderBy('ordine', 'asc')]);
+
+  if (apparecchiature.length === 0) {
+    container.innerHTML = `
+      <div class="top-bar"><h2>Temperature</h2></div>
+      <div class="empty-state">
+        Nessuna apparecchiatura configurata.<br>
+        Un responsabile deve prima aggiungere i frigoriferi/freezer nella collezione
+        <code>apparecchiature</code> su Firebase.
+      </div>`;
+    return;
+  }
+
+  const { inizio, fine } = inizioEFineGiorno(oggiISO());
+  const rilevazioniOggi = await leggiTutti('rilevazioni_temperatura', [
+    where('registrato_il', '>=', inizio), where('registrato_il', '<=', fine),
+  ]);
+  const ultimaPerApparecchiatura = new Map();
+  rilevazioniOggi.forEach((r) => ultimaPerApparecchiatura.set(r.apparecchiatura_id, r));
+
   container.innerHTML = `
-    <div style="max-width: 600px; margin: 0 auto; padding: 16px;">
-      <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 24px;">
-        <h2 style="font-size: 18px; font-weight: 600; margin-bottom: 16px; color: #1e293b; display: flex; align-items: center; gap: 8px;">
-          <span>🌡️</span> Registro Controllo Temperature
-        </h2>
-        <form id="temp-form">
-          <div style="margin-bottom: 16px;">
-            <label style="display: block; font-size: 13px; font-weight: 500; color: #475569; margin-bottom: 6px;">Attrezzatura / Unità Frigorifera</label>
-            <select id="attrezzatura-select" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px;">
-              <option value="Banco Frigo">Banco Frigo (0°C / +4°C)</option>
-              <option value="Armadio Frigo">Armadio Frigo (0°C / +4°C)</option>
-              <option value="Frigo Magazzino">Frigo Magazzino (+2°C / +6°C)</option>
-              <option value="Frigo Vetrina">Frigo Vetrina (+2°C / +8°C)</option>
-              <option value="Freezer Pozzetto 1">Freezer Pozzetto 1 (-22°C / -18°C)</option>
-              <option value="Freezer Pozzetto 2">Freezer Pozzetto 2 (-22°C / -18°C)</option>
-            </select>
+    <div class="top-bar"><h2>Temperature — ${oggiISO()}</h2></div>
+    ${apparecchiature.map((a) => {
+      const letta = ultimaPerApparecchiatura.get(a.id);
+      return `
+        <div class="list-card">
+          <div class="check-row" style="cursor:default;">
+            <span class="dot ${!letta ? 'pending' : letta.esito === 'fuori_limite' ? 'warn' : 'ok'}"></span>
+            <div class="rt">
+              <div class="t">${a.nome}</div>
+              <div class="s">Range: ${a.limite_minimo}°C / ${a.limite_massimo}°C ${letta ? `— ultima: ${letta.valore}°C` : '— non ancora registrata'}</div>
+            </div>
           </div>
-          <div style="margin-bottom: 20px;">
-            <label style="display: block; font-size: 13px; font-weight: 500; color: #475569; margin-bottom: 6px;">Temperatura Rilevata (°C)</label>
-            <input type="number" step="0.1" id="temp-input" placeholder="Es. 3.2" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; box-sizing: border-box;">
+          <div class="form-row" style="padding-bottom:12px;">
+            <div>
+              <input type="number" step="0.1" placeholder="Es. ${a.temperatura_target ?? ''}" data-input-temp="${a.id}">
+            </div>
+            <button class="btn btn-primary" data-salva="${a.id}" style="flex:0 0 auto;">Salva</button>
           </div>
-          <button type="submit" style="width: 100%; background: #2563eb; color: white; padding: 12px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
-            <span>💾</span> Salva Rilevazione Temperatura
-          </button>
-        </form>
-      </div>
-
-      <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-        <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: #1e293b; display: flex; align-items: center; gap: 8px;">
-          <span>📋</span> Ultime Rilevazioni
-        </h3>
-        <div id="temp-list">Caricamento in corso...</div>
-      </div>
-    </div>
+        </div>`;
+    }).join('')}
   `;
 
-  const form = container.querySelector('#temp-form');
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const attrezzatura = container.querySelector('#attrezzatura-select').value;
-    const temp = parseFloat(container.querySelector('#temp-input').value);
-    
-    try {
-      await addDoc(collection(db, 'temperature'), {
-        attrezzatura: attrezzatura,
-        temperatura: temp,
-        data: new Date().toLocaleDateString('it-IT') + ' ' + new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }),
-        timestamp: new Date()
-      });
-      container.querySelector('#temp-input').value = '';
-      loadTemperatureHistory(container);
-    } catch (err) {
-      console.error("Errore salvataggio:", err);
-      alert("Errore durante il salvataggio della temperatura.");
-    }
-  });
+  apparecchiature.forEach((a) => {
+    const btn = container.querySelector(`[data-salva="${a.id}"]`);
+    btn.addEventListener('click', async () => {
+      const input = container.querySelector(`[data-input-temp="${a.id}"]`);
+      const valore = parseFloat(input.value);
+      if (Number.isNaN(valore)) { alert('Inserisci un valore di temperatura.'); return; }
 
-  loadTemperatureHistory(container);
-}
-
-async function loadTemperatureHistory(container) {
-  const listContainer = container.querySelector('#temp-list');
-  if (!listContainer) return;
-
-  try {
-    const q = query(collection(db, 'temperature'), orderBy('timestamp', 'desc'), limit(10));
-    const querySnapshot = await getDocs(q);
-    
-    if (querySnapshot.empty) {
-      listContainer.innerHTML = '<p style="color: #64748b; font-size: 14px;">Nessuna rilevazione presente.</p>';
-      return;
-    }
-
-    let html = '';
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      const nomeAttrezzatura = data.attrezzatura || data.attrezzaturaNome || data.nomeFrigo || data.frigo || data.frigoNome || data.equipment || data.equipmentName || data.unita || data.unitaFrigorifera || data.nome || 'Attrezzatura';
-      const valoreTemp = data.temperatura ?? data.temp ?? data.valore ?? data.gradi ?? data.grado ?? 'N/D';
-      
-      let dataOra = data.data || data.date || data.ora || data.created_at || data.createdAt;
-      if (!dataOra && data.timestamp) {
-        if (typeof data.timestamp.toDate === 'function') {
-          dataOra = data.timestamp.toDate().toLocaleString('it-IT');
-        } else if (typeof data.timestamp === 'string') {
-          dataOra = data.timestamp;
+      const esito = (valore < a.limite_minimo || valore > a.limite_massimo) ? 'fuori_limite' : 'nella_norma';
+      btn.disabled = true;
+      try {
+        await aggiungi('rilevazioni_temperatura', {
+          apparecchiatura_id: a.id,
+          valore,
+          esito,
+          registrato_da: profilo.id,
+        }, 'registrato_il');
+        if (esito === 'fuori_limite') {
+          alert(`Attenzione: ${a.nome} è fuori range (${valore}°C). Registrazione salvata — valuta di segnalare un'anomalia con il pulsante rosso in alto.`);
         }
+        renderTemperaturePage(container, profilo);
+      } catch (err) {
+        console.error(err);
+        alert('Errore durante il salvataggio.');
+        btn.disabled = false;
       }
-      
-      if (typeof dataOra === 'string' && dataOra.includes('T')) {
-        try {
-          const d = new Date(dataOra);
-          if (!isNaN(d.getTime())) {
-            dataOra = d.toLocaleDateString('it-IT') + ' ' + d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-          }
-        } catch (e) {}
-      }
-      
-      if (!dataOra) dataOra = 'Data non disponibile';
-
-      html += `
-        <div style="border-left: 4px solid #10b981; background: #f8fafc; padding: 12px; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-          <div>
-            <strong style="display: block; font-size: 14px; color: #1e293b;">${nomeAttrezzatura}</strong>
-            <span style="font-size: 12px; color: #64748b;">Temperatura: <strong style="color: #059669;">${valoreTemp}°C</strong> | Data: ${dataOra}</span>
-          </div>
-          <span style="background: #d1fae5; color: #047857; font-size: 12px; font-weight: 600; padding: 4px 8px; border-radius: 12px;">OK</span>
-        </div>
-      `;
     });
-    listContainer.innerHTML = html;
-  } catch (err) {
-    console.error("Errore caricamento storico:", err);
-    listContainer.innerHTML = '<p style="color: #ef4444; font-size: 14px;">Errore nel caricamento dei dati.</p>';
-  }
+  });
 }

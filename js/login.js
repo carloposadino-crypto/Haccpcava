@@ -1,4 +1,4 @@
-import { signInWithPassword } from '../../lib/auth.js';
+import { signInWithPassword } from './auth.js';
 
 export function renderLogin(container, onSuccess) {
   container.innerHTML = `

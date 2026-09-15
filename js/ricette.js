@@ -1,301 +1,255 @@
-import { db, collection, addDoc, getDocs, doc, deleteDoc, query, orderBy, serverTimestamp } from './firebase.js';
+// Schede HACCP (preparazioni). Gli ingredienti sono righe con nome e
+// grammi (mai altre unità, per restare sempre confrontabili) — così
+// l'app può calcolare da sola il costo della preparazione e il costo
+// a porzione, leggendo i prezzi dalla pagina Listino prezzi.
+// Si può anche importare una bozza da un link o da una foto/screenshot
+// tramite IA: i campi si riempiono da soli, ma restano sempre
+// modificabili prima di salvare.
 
-const RICETTA_DEFAULT = {
-  id: "default_vitello",
-  nome: "Vitello Tonnato CBT (20 porzioni)",
-  categoria: "Secondi",
-  tempi: "Preparazione: 40 min | Cottura CBT: 4 ore | Abbattimento: 60 min",
-  ingredienti: `Girello di Vitello: 2400g
-Olio Extravergine d'Oliva: 80g
-Sale Fino: 28g
-Pepe Nero Macinato: 3g
-Ramerino Fresco: 10g
-Timo Fresco: 10g
-Alloro Fresco: 4g
-Vino Bianco Secco: 100g
-Tonno Sott'olio Sgocciolato: 400g
-Acciughe Sott'olio: 50g
-Capperi Dissalati: 60g
-Tuorli d'Uovo Pastorizzati: 200g
-Succo di Limone: 30g`,
-  procedimento: `1. Mondare e rifilare il girello di vitello.
-2. Condire la carne con sale, pepe, erbe aromatiche e olio EVO.
-3. Confezionare sotto vuoto al 99% con il vino bianco.
-4. Cuocere in bagno maria termostatato (roner) a 58°C per 4 ore.
-5. A fine cottura, abbattere immediatamente a +3°C al cuore.
-6. Per la salsa tonnata: frullare tonno, acciughe, capperi, tuorli pastorizzati e succo di limone montando a filo con olio EVO.
-7. Tagliare la carne finemente all'affettatrice e servire nappando con la salsa tonnata.`
-};
+import { leggiTutti, aggiungi, aggiorna, orderBy } from './store.js';
 
-export function renderRicettePage(container) {
+const STATO_LABEL = { bozza: 'Bozza', da_revisionare: 'Da revisionare', approvata: 'Approvata' };
+const STATO_BADGE = { bozza: 'badge-pending', da_revisionare: 'badge-warn', approvata: 'badge-ok' };
+
+let righeCorrenti = [];
+let listinoCorrente = [];
+
+function rigaVuota() { return { nome: '', grammi: '' }; }
+
+// Cerca il prezzo al kg di un ingrediente nel listino: prima match
+// esatto, poi un match "contiene" in entrambe le direzioni. Se non
+// trova nulla, ritorna null (l'ingrediente resta fuori dal calcolo).
+function trovaPrezzoKg(nomeIngrediente) {
+  const cercato = nomeIngrediente.trim().toLowerCase();
+  if (!cercato) return null;
+  let voce = listinoCorrente.find((v) => v.nome.trim().toLowerCase() === cercato);
+  if (!voce) voce = listinoCorrente.find((v) => cercato.includes(v.nome.trim().toLowerCase()) || v.nome.trim().toLowerCase().includes(cercato));
+  return voce ? voce.prezzo_kg : null;
+}
+
+// Converte il testo restituito dall'importazione IA (righe tipo
+// "Farina 00: 500g") in righe {nome, grammi}; le righe che non
+// rispettano il formato entrano con i grammi vuoti, da completare a mano.
+function parseIngredientiTesto(testo) {
+  if (!testo) return [rigaVuota()];
+  const righe = testo.split('\n').map((r) => r.trim()).filter(Boolean).map((riga) => {
+    const m = riga.match(/^(.+?):\s*([\d.,]+)\s*g$/i);
+    return m ? { nome: m[1].trim(), grammi: m[2].replace(',', '.') } : { nome: riga.replace(/^-\s*/, ''), grammi: '' };
+  });
+  return righe.length ? righe : [rigaVuota()];
+}
+
+export async function renderRicettePage(container, profilo) {
+  container.innerHTML = `<div class="empty-state">Caricamento…</div>`;
+  const [schede, listino] = await Promise.all([
+    leggiTutti('schede_haccp', [orderBy('creato_il', 'desc')]).catch(() => []),
+    leggiTutti('listino_prezzi').catch(() => []),
+  ]);
+  listinoCorrente = listino;
+  righeCorrenti = [rigaVuota()];
+
   container.innerHTML = `
-    <div style="max-width: 900px; margin: 0 auto; padding: 10px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-        <h2 style="font-size: 20px; font-weight: bold; color: #111827; margin: 0;">📖 Schede Ricette (Base 20 porzioni)</h2>
-        <button id="btn-nuova-ricetta" style="background: #059669; color: white; border: none; padding: 8px 14px; border-radius: 6px; font-weight: bold; cursor: pointer;">+ Nuova Ricetta</button>
+    <div class="top-bar"><h2>Schede HACCP</h2></div>
+
+    <div class="list-card" style="border:1px dashed #2b5c3a;">
+      <div style="font-size:13px; font-weight:bold; color:#2b5c3a; margin-bottom:6px;">✨ Importazione automatica</div>
+      <div style="font-size:12px; color:#475569; margin-bottom:10px;">Carica una foto/screenshot della ricetta, oppure incolla un link. Poi controlli e correggi i grammi prima di salvare.</div>
+      <input type="file" id="sc-file-input" accept="image/*" capture="environment" style="display:none;">
+      <button type="button" class="btn btn-secondary btn-block" id="sc-btn-foto" style="margin-bottom:10px;">📷 Scegli foto / screenshot</button>
+      <div class="form-row">
+        <input type="url" id="sc-url-input" placeholder="https://sito-ricette.it/ricetta...">
+        <button type="button" class="btn btn-secondary" id="sc-btn-url" style="flex:0 0 auto;">🔗 Importa</button>
       </div>
-
-      <!-- BOX IMPORTAZIONE AUTOMATICA -->
-      <div style="background: #f0fdf4; border: 1px dashed #059669; border-radius: 12px; padding: 14px; margin-bottom: 20px;">
-        <div style="font-size: 13px; font-weight: bold; color: #065f46; margin-bottom: 6px;">✨ Importazione Automatica con IA</div>
-        <div style="font-size: 12px; color: #047857; margin-bottom: 10px;">Carica uno screenshot oppure incolla il link della ricetta:</div>
-
-        <input type="file" id="ric-file-input" accept="image/*" style="display: none;">
-        <button id="btn-upload-foto" type="button" style="width: 100%; background: #10b981; color: white; border: none; padding: 10px; border-radius: 6px; font-weight: bold; margin-bottom: 10px; cursor: pointer;">📷 Scegli Screenshot / Scatta Foto</button>
-
-        <div style="text-align: center; font-size: 11px; color: #059669; margin: 6px 0; font-weight: bold;">OPPUR INCOLLA UN LINK</div>
-
-        <div style="display: flex; gap: 6px;">
-          <input type="url" id="ric-url-input" placeholder="https://sito-ricette.it/ricetta..." style="flex: 1; padding: 8px; border: 1px solid #a7f3d0; border-radius: 6px; font-size: 12px;">
-          <button id="btn-import-url" type="button" style="background: #047857; color: white; border: none; padding: 8px 12px; border-radius: 6px; font-weight: bold; cursor: pointer;">🔗 Importa</button>
-        </div>
-
-        <div id="status-ai" style="display: none; font-size: 12px; color: #065f46; font-weight: bold; margin-top: 10px; text-align: center;">⚙️ Elaborazione con IA in corso...</div>
-      </div>
-
-      <!-- FORM SCHEDA RICETTA -->
-      <div id="box-form-ricetta" style="display: none; background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-        <h3 style="font-size: 16px; font-weight: bold; margin-bottom: 12px; color: #111827;">Scheda Ricetta</h3>
-        
-        <form id="form-ricetta" style="display: flex; flex-direction: column; gap: 12px;">
-          <div>
-            <label style="display: block; font-size: 12px; font-weight: bold; margin-bottom: 4px; color: #374151;">Nome Ricetta *</label>
-            <input type="text" id="ric-nome" required style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box;">
-          </div>
-
-          <div>
-            <label style="display: block; font-size: 12px; font-weight: bold; margin-bottom: 4px; color: #374151;">Categoria</label>
-            <select id="ric-categoria" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box;">
-              <option value="Antipasti">Antipasti</option>
-              <option value="Primi">Primi</option>
-              <option value="Secondi" selected>Secondi</option>
-              <option value="Contorni">Contorni</option>
-              <option value="Dolci">Dolci</option>
-              <option value="Basi / Salse">Basi / Salse</option>
-            </select>
-          </div>
-
-          <div>
-            <label style="display: block; font-size: 12px; font-weight: bold; margin-bottom: 4px; color: #374151;">Tempi</label>
-            <input type="text" id="ric-tempi" placeholder="Prep: 30 min | Cottura: 12 ore CBT" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box;">
-          </div>
-
-          <div>
-            <label style="display: block; font-size: 12px; font-weight: bold; margin-bottom: 4px; color: #374151;">Ingredienti (Sintassi: Ingrediente: Peso g) *</label>
-            <textarea id="ric-ingredienti" required rows="6" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; font-family: monospace; font-size: 12px;" placeholder="Girello di Vitello: 2400g&#10;Olio EVO: 80g"></textarea>
-          </div>
-
-          <div>
-            <label style="display: block; font-size: 12px; font-weight: bold; margin-bottom: 4px; color: #374151;">Procedimento Numerato</label>
-            <textarea id="ric-procedimento" rows="6" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; font-size: 12px;" placeholder="1. Mondare la carne...&#10;2. Condire e confezionare sottovuoto..."></textarea>
-          </div>
-
-          <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px;">
-            <button type="button" id="btn-annulla-ricetta" style="background: #9ca3af; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer;">Annulla</button>
-            <button type="submit" style="background: #059669; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer;">Salva Ricetta</button>
-          </div>
-        </form>
-      </div>
-
-      <!-- ELENCO RICETTE SALVATE -->
-      <div id="lista-ricette" style="display: flex; flex-direction: column; gap: 12px;"></div>
+      <div id="sc-import-status" style="display:none; font-size:12px; color:#2b5c3a; font-weight:bold; text-align:center; margin-top:6px;"></div>
     </div>
+
+    <div class="list-card">
+      <label class="field-label">Nome preparazione</label>
+      <input type="text" id="sc-nome" placeholder="Es. Vitello Tonnato CBT">
+      <div class="form-row">
+        <div><label class="field-label">Codice</label><input type="text" id="sc-codice" placeholder="Es. SEC-01"></div>
+        <div><label class="field-label">Numero porzioni</label><input type="number" id="sc-porzioni" value="20"></div>
+      </div>
+
+      <label class="field-label">Ingredienti (sempre in grammi)</label>
+      <div id="sc-righe"></div>
+      <button type="button" class="btn btn-secondary" id="sc-add-riga" style="margin-bottom:6px;">+ Aggiungi ingrediente</button>
+      <div id="sc-costo-box" style="background:#f0fdf4; border-radius:8px; padding:10px 12px; margin:10px 0 14px; font-size:13px; color:#166534;"></div>
+
+      <label class="field-label">Processo / procedimento</label>
+      <textarea id="sc-processo" placeholder="Passaggi principali, tempi e temperature"></textarea>
+      <label class="field-label">Pericoli individuati</label>
+      <textarea id="sc-pericoli" placeholder="Es. sviluppo microbico, contaminazione crociata"></textarea>
+      <label class="field-label">Misure di controllo</label>
+      <textarea id="sc-misure" placeholder="Come si tengono sotto controllo i pericoli"></textarea>
+      <label class="field-label">CCP (punti critici di controllo)</label>
+      <textarea id="sc-ccp" placeholder="Es. Abbattimento entro 90 min a +3°C al cuore"></textarea>
+      <label class="field-label">Note</label>
+      <textarea id="sc-note"></textarea>
+      <button class="btn btn-primary btn-block" id="sc-salva">Salva come bozza</button>
+    </div>
+
+    <h3 style="font-size:14px; color:#64748b; margin: 16px 0 8px;">Elenco (${schede.length})</h3>
+    ${schede.length === 0 ? '<div class="empty-state">Nessuna scheda ancora creata.</div>' : `
+      <div class="list-card">
+        ${schede.map((s) => `
+          <div class="check-row" style="cursor:default;" data-scheda="${s.id}">
+            <div class="rt">
+              <div class="t">${s.nome}</div>
+              <div class="s">${s.codice || ''}${s.costo_a_porzione != null ? ` · € ${s.costo_a_porzione.toFixed(2)} a porzione` : ''}</div>
+            </div>
+            <span class="badge ${STATO_BADGE[s.stato] || 'badge-pending'}">${STATO_LABEL[s.stato] || s.stato}</span>
+            ${(s.stato !== 'approvata' && profilo.ruolo === 'responsabile') ? '<button class="btn btn-secondary sc-approva" style="margin-left:8px;">Approva</button>' : ''}
+          </div>
+        `).join('')}
+      </div>
+    `}
   `;
 
-  // EVENTI FRONTEND
-  const btnNuova = document.getElementById('btn-nuova-ricetta');
-  const boxForm = document.getElementById('box-form-ricetta');
-  const btnAnnulla = document.getElementById('btn-annulla-ricetta');
-  const formRicetta = document.getElementById('form-ricetta');
+  function calcolaCosto() {
+    let costoTotale = 0;
+    let senzaPrezzo = 0;
+    righeCorrenti.forEach((r) => {
+      const grammi = parseFloat(r.grammi);
+      if (!r.nome.trim() || Number.isNaN(grammi)) return;
+      const prezzoKg = trovaPrezzoKg(r.nome);
+      if (prezzoKg == null) { senzaPrezzo++; return; }
+      costoTotale += (grammi / 1000) * prezzoKg;
+    });
+    const porzioni = parseInt(container.querySelector('#sc-porzioni').value, 10) || 1;
+    const costoPorzione = costoTotale / porzioni;
+    const box = container.querySelector('#sc-costo-box');
+    box.innerHTML = `Costo ingredienti: <strong>€ ${costoTotale.toFixed(2)}</strong> — a porzione: <strong>€ ${costoPorzione.toFixed(2)}</strong>`
+      + (senzaPrezzo > 0 ? `<br><span style="color:#b45309;">⚠️ ${senzaPrezzo} ingrediente/i senza prezzo nel listino: il costo è parziale. Aggiungili in "Altro → Listino prezzi".</span>` : '');
+    return { costoTotale, costoPorzione, porzioni };
+  }
 
-  const btnImportUrl = document.getElementById('btn-import-url');
-  const ricUrlInput = document.getElementById('ric-url-input');
-  const btnUploadFoto = document.getElementById('btn-upload-foto');
-  const fileInput = document.getElementById('ric-file-input');
-  const statusAi = document.getElementById('status-ai');
+  function disegnaRighe() {
+    const wrap = container.querySelector('#sc-righe');
+    wrap.innerHTML = righeCorrenti.map((riga, i) => `
+      <div class="form-row" data-riga="${i}">
+        <input type="text" placeholder="Ingrediente" data-campo="nome" value="${riga.nome}">
+        <input type="number" placeholder="g" data-campo="grammi" value="${riga.grammi}" style="flex:0 0 90px;">
+        ${righeCorrenti.length > 1 ? `<button type="button" class="btn btn-danger sc-rimuovi" style="flex:0 0 auto; padding:8px 10px;">✕</button>` : ''}
+      </div>
+    `).join('');
 
-  btnNuova.addEventListener('click', () => {
-    formRicetta.reset();
-    boxForm.style.display = 'block';
-  });
-
-  btnAnnulla.addEventListener('click', () => {
-    boxForm.style.display = 'none';
-  });
-
-  // IMPORTAZIONE DA LINK
-  btnImportUrl.addEventListener('click', async () => {
-    const url = ricUrlInput.value.trim();
-    if (!url) {
-      alert("Inserisci un link valido!");
-      return;
-    }
-
-    statusAi.style.display = 'block';
-    statusAi.innerText = '⚙️ Elaborazione con IA in corso...';
-
-    try {
-      const response = await fetch('/api/parse-recipe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url })
+    wrap.querySelectorAll('[data-riga]').forEach((rigaEl) => {
+      const i = +rigaEl.dataset.riga;
+      rigaEl.querySelectorAll('[data-campo]').forEach((input) => {
+        input.addEventListener('input', () => { righeCorrenti[i][input.dataset.campo] = input.value; calcolaCosto(); });
       });
+      const btnRimuovi = rigaEl.querySelector('.sc-rimuovi');
+      if (btnRimuovi) btnRimuovi.addEventListener('click', () => { righeCorrenti.splice(i, 1); disegnaRighe(); calcolaCosto(); });
+    });
+  }
+  disegnaRighe();
+  calcolaCosto();
 
-      const data = await response.json();
+  container.querySelector('#sc-add-riga').addEventListener('click', () => { righeCorrenti.push(rigaVuota()); disegnaRighe(); calcolaCosto(); });
+  container.querySelector('#sc-porzioni').addEventListener('input', calcolaCosto);
 
-      if (!response.ok || data.error) {
-        alert("Errore importazione: " + (data.error || "Impossibile leggere la ricetta"));
-        statusAi.style.display = 'none';
-        return;
-      }
+  const statusBox = container.querySelector('#sc-import-status');
+  const mostraStato = (msg) => { statusBox.style.display = 'block'; statusBox.textContent = msg; };
+  const nascondiStato = () => { statusBox.style.display = 'none'; };
 
-      document.getElementById('ric-nome').value = data.nome || '';
-      document.getElementById('ric-categoria').value = data.categoria || 'Secondi';
-      document.getElementById('ric-tempi').value = data.tempi || '';
-      document.getElementById('ric-ingredienti').value = data.ingredienti || '';
-      document.getElementById('ric-procedimento').value = data.procedimento || '';
+  const applicaRicetta = (data) => {
+    container.querySelector('#sc-nome').value = data.nome || '';
+    if (data.porzioni) container.querySelector('#sc-porzioni').value = data.porzioni;
+    righeCorrenti = parseIngredientiTesto(data.ingredienti || data.ingredientiText || '');
+    disegnaRighe();
+    container.querySelector('#sc-processo').value = data.procedimento || data.procedimentoNumerato || '';
+    container.querySelector('#sc-note').value = data.haccpNote || data.noteHaccp || data.haccp || '';
+    calcolaCosto();
+    container.querySelector('#sc-nome').scrollIntoView({ behavior: 'smooth' });
+  };
 
-      boxForm.style.display = 'block';
-      boxForm.scrollIntoView({ behavior: 'smooth' });
-      statusAi.style.display = 'none';
-
+  container.querySelector('#sc-btn-url').addEventListener('click', async () => {
+    const url = container.querySelector('#sc-url-input').value.trim();
+    if (!url) { alert('Inserisci un link valido.'); return; }
+    mostraStato('⚙️ Lettura della ricetta in corso…');
+    try {
+      const resp = await fetch('/api/parse-recipe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+      const data = await resp.json();
+      if (data.error) { alert(data.error); nascondiStato(); return; }
+      applicaRicetta(data);
+      nascondiStato();
     } catch (err) {
       console.error(err);
-      alert("Errore durante la comunicazione con l'IA.");
-      statusAi.style.display = 'none';
+      alert('Errore di comunicazione durante l\'importazione.');
+      nascondiStato();
     }
   });
 
-  // IMPORTAZIONE DA FOTO
-  btnUploadFoto.addEventListener('click', () => fileInput.click());
-  fileInput.addEventListener('change', async (e) => {
+  container.querySelector('#sc-btn-foto').addEventListener('click', () => container.querySelector('#sc-file-input').click());
+  container.querySelector('#sc-file-input').addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
-    statusAi.style.display = 'block';
-    statusAi.innerText = '📷 Lettura immagine con IA in corso...';
-
+    mostraStato('📷 Lettura dell\'immagine in corso…');
     const reader = new FileReader();
     reader.onload = async () => {
       try {
-        const response = await fetch('/api/parse-recipe', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: reader.result })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok || data.error) {
-          alert("Errore scansione: " + (data.error || "Impossibile analizzare l'immagine"));
-          statusAi.style.display = 'none';
-          return;
-        }
-
-        document.getElementById('ric-nome').value = data.nome || '';
-        document.getElementById('ric-categoria').value = data.categoria || 'Secondi';
-        document.getElementById('ric-tempi').value = data.tempi || '';
-        document.getElementById('ric-ingredienti').value = data.ingredienti || '';
-        document.getElementById('ric-procedimento').value = data.procedimento || '';
-
-        boxForm.style.display = 'block';
-        boxForm.scrollIntoView({ behavior: 'smooth' });
-        statusAi.style.display = 'none';
-
+        const resp = await fetch('/api/parse-recipe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: reader.result }) });
+        const data = await resp.json();
+        if (data.error) { alert(data.error); nascondiStato(); return; }
+        applicaRicetta(data);
+        nascondiStato();
       } catch (err) {
         console.error(err);
-        alert("Errore scansione immagine.");
-        statusAi.style.display = 'none';
+        alert('Errore durante la lettura dell\'immagine.');
+        nascondiStato();
       }
     };
     reader.readAsDataURL(file);
   });
 
-  // SALVATAGGIO
-  formRicetta.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const nuovaRicetta = {
-      nome: document.getElementById('ric-nome').value,
-      categoria: document.getElementById('ric-categoria').value,
-      tempi: document.getElementById('ric-tempi').value,
-      ingredienti: document.getElementById('ric-ingredienti').value,
-      procedimento: document.getElementById('ric-procedimento').value,
-      createdAt: serverTimestamp()
-    };
+  container.querySelector('#sc-salva').addEventListener('click', async (e) => {
+    const nome = container.querySelector('#sc-nome').value.trim();
+    if (!nome) { alert('Inserisci il nome della preparazione.'); return; }
+    const righeValide = righeCorrenti.filter((r) => r.nome.trim());
+    const { costoTotale, costoPorzione, porzioni } = calcolaCosto();
 
+    e.currentTarget.disabled = true;
     try {
-      await addDoc(collection(db, 'ricette'), nuovaRicetta);
-      boxForm.style.display = 'none';
-      formRicetta.reset();
-      caricaRicette();
+      await aggiungi('schede_haccp', {
+        nome,
+        codice: container.querySelector('#sc-codice').value,
+        porzioni,
+        stato: 'bozza',
+        contenuto: {
+          ingredienti: righeValide,
+          processo: container.querySelector('#sc-processo').value,
+          pericoli: container.querySelector('#sc-pericoli').value,
+          misure_controllo: container.querySelector('#sc-misure').value,
+          ccp: container.querySelector('#sc-ccp').value,
+          note: container.querySelector('#sc-note').value,
+        },
+        costo_totale: Math.round(costoTotale * 100) / 100,
+        costo_a_porzione: Math.round(costoPorzione * 100) / 100,
+        autore_id: profilo.id,
+      }, 'creato_il');
+      renderRicettePage(container, profilo);
     } catch (err) {
-      console.error("Errore salvataggio:", err);
-      alert("Errore durante il salvataggio della ricetta.");
+      console.error(err);
+      alert('Errore durante il salvataggio.');
+      e.currentTarget.disabled = false;
     }
   });
 
-  caricaRicette();
-}
-
-async function caricaRicette() {
-  const container = document.getElementById('lista-ricette');
-  if (!container) return;
-
-  try {
-    const q = query(collection(db, 'ricette'), orderBy('createdAt', 'desc'));
-    const snapshot = await getDocs(q);
-    let html = '';
-
-    if (snapshot.empty) {
-      // Mostra ricetta di default se il database è vuoto
-      html = generaHtmlRicetta(RICETTA_DEFAULT, true);
-    } else {
-      snapshot.forEach(docSnap => {
-        html += generaHtmlRicetta({ id: docSnap.id, ...docSnap.data() }, false);
-      });
-    }
-
-    container.innerHTML = html;
-
-    // Gestione eliminazione
-    document.querySelectorAll('.btn-elimina-ricetta').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        const id = e.target.dataset.id;
-        if (confirm("Sei sicuro di voler eliminare questa ricetta?")) {
-          await deleteDoc(doc(db, 'ricette', id));
-          caricaRicette();
-        }
-      });
+  schede.forEach((s) => {
+    const btn = container.querySelector(`[data-scheda="${s.id}"] .sc-approva`);
+    if (!btn) return;
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      e.currentTarget.disabled = true;
+      try {
+        await aggiorna('schede_haccp', s.id, { stato: 'approvata', approvato_da: profilo.id });
+        renderRicettePage(container, profilo);
+      } catch (err) {
+        console.error(err);
+        alert('Errore durante l\'approvazione.');
+        e.currentTarget.disabled = false;
+      }
     });
-
-  } catch (err) {
-    console.error("Errore caricamento ricette:", err);
-    container.innerHTML = generaHtmlRicetta(RICETTA_DEFAULT, true);
-  }
-}
-
-function generaHtmlRicetta(r, isDefault) {
-  return `
-    <div style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-        <div>
-          <span style="font-size: 10px; font-weight: bold; text-transform: uppercase; background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 12px;">${r.categoria || 'Generica'}</span>
-          <h3 style="font-size: 16px; font-weight: bold; color: #111827; margin: 4px 0 2px 0;">${r.nome}</h3>
-          <div style="font-size: 11px; color: #6b7280;">${r.tempi || ''}</div>
-        </div>
-        ${!isDefault ? `<button class="btn-elimina-ricetta" data-id="${r.id}" style="background: #fee2e2; color: #991b1b; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;">Elimina</button>` : ''}
-      </div>
-
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; font-size: 12px;">
-        <div style="background: #f9fafb; padding: 10px; border-radius: 8px;">
-          <strong style="display: block; margin-bottom: 6px; color: #374151;">Ingredienti (20 porzioni):</strong>
-          <pre style="white-space: pre-wrap; font-family: inherit; margin: 0; color: #4b5563;">${r.ingredienti || ''}</pre>
-        </div>
-        <div style="background: #f9fafb; padding: 10px; border-radius: 8px;">
-          <strong style="display: block; margin-bottom: 6px; color: #374151;">Procedimento:</strong>
-          <pre style="white-space: pre-wrap; font-family: inherit; margin: 0; color: #4b5563;">${r.procedimento || ''}</pre>
-        </div>
-      </div>
-    </div>
-  `;
+  });
 }

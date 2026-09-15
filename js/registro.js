@@ -1,77 +1,101 @@
-import { db, collection, addDoc, serverTimestamp } from './firebase.js';
+// Registro Cotture, Abbattimenti e Rigenerazioni (registrazioni_processo).
+// Unisce in un solo form quello che nel progetto precedente erano due
+// pagine separate e sovrapposte: qui il tipo di processo determina quali
+// campi servono davvero (es. l'abbattimento ha sempre bisogno della
+// temperatura al cuore, la cottura normale no).
 
-export function renderRegistroPage(container) {
-  const today = new Date().toISOString().split('T')[0];
+import { leggiTutti, aggiungi, where, orderBy, oggiISO, inizioEFineGiorno } from './store.js';
+
+const TIPI = [
+  ['cottura', 'Cottura normale'],
+  ['cbt', 'Cottura Sottovuoto / Roner (CBT)'],
+  ['abbattimento', 'Abbattimento (positivo/negativo)'],
+  ['rigenerazione', 'Rigenerazione'],
+];
+
+export async function renderRegistroPage(container, profilo) {
+  container.innerHTML = `<div class="empty-state">Caricamento…</div>`;
+
+  const { inizio, fine } = inizioEFineGiorno(oggiISO());
+  const oggiList = await leggiTutti('registrazioni_processo', [
+    where('registrato_il', '>=', inizio), where('registrato_il', '<=', fine), orderBy('registrato_il', 'desc'),
+  ]);
+
   container.innerHTML = `
-    <div class="page-header">
-      <h2>Cotture & Abbattimenti</h2>
-      <p class="date-subtitle">Registro processi termici e roner</p>
+    <div class="top-bar"><h2>Cotture / Abbattimenti / Rigenerazioni</h2></div>
+
+    <div class="list-card">
+      <label class="field-label">Tipo di processo</label>
+      <select id="reg-tipo">${TIPI.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
+
+      <label class="field-label">Prodotto / preparazione</label>
+      <input type="text" id="reg-prodotto" placeholder="Es. Vitello per Tonnato, Brasato...">
+
+      <div class="form-row">
+        <div>
+          <label class="field-label">Temp. inizio (°C)</label>
+          <input type="number" step="0.1" id="reg-temp-inizio">
+        </div>
+        <div>
+          <label class="field-label">Temp. fine / al cuore (°C)</label>
+          <input type="number" step="0.1" id="reg-temp-fine">
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label class="field-label">Durata (minuti)</label>
+          <input type="number" id="reg-durata">
+        </div>
+        <div>
+          <label class="field-label">Lotto materia prima</label>
+          <input type="text" id="reg-lotto">
+        </div>
+      </div>
+      <label class="field-label">Note</label>
+      <textarea id="reg-note" placeholder="Eventuali note utili al controllo"></textarea>
+      <button class="btn btn-primary btn-block" id="reg-salva">Registra</button>
     </div>
-    <form id="proc-form" class="card" style="display: flex; flex-direction: column; gap: 12px;">
-      <label style="font-weight: bold; font-size: 14px;">Tipo Processo</label>
-      <select id="proc_tipo">
-        <option value="Cottura">Cottura</option>
-        <option value="Abbattimento">Abbattimento</option>
-        <option value="Cottura Sottovuoto / Roner">Cottura Sottovuoto / Roner</option>
-      </select>
 
-      <label style="font-weight: bold; font-size: 14px;">Prodotto</label>
-      <input type="text" id="proc_prodotto" placeholder="Es. Brasato, Zuppa, etc." required>
-
-      <label style="font-weight: bold; font-size: 14px;">Quantità</label>
-      <input type="text" id="proc_quantita" placeholder="Es. 5 kg">
-
-      <div style="display: flex; gap: 10px;">
-        <div style="flex: 1;">
-          <label style="font-weight: bold; font-size: 13px;">Temp Inizio (°C)</label>
-          <input type="number" step="0.1" id="proc_temp_inizio" placeholder="Es. 75">
-        </div>
-        <div style="flex: 1;">
-          <label style="font-weight: bold; font-size: 13px;">Temp Fine (°C)</label>
-          <input type="number" step="0.1" id="proc_temp_fine" placeholder="Es. 3">
-        </div>
+    <h3 style="font-size:14px; color:#64748b; margin: 16px 0 8px;">Registrate oggi (${oggiList.length})</h3>
+    ${oggiList.length === 0 ? '<div class="empty-state">Nessuna registrazione oggi.</div>' : `
+      <div class="list-card">
+        ${oggiList.map((r) => `
+          <div class="check-row" style="cursor:default;">
+            <div class="rt">
+              <div class="t">${TIPI.find(([v]) => v === r.tipo)?.[1] || r.tipo} — ${r.prodotto || ''}</div>
+              <div class="s">${r.valori?.temperatura_inizio_c ?? '—'}°C → ${r.valori?.temperatura_fine_c ?? '—'}°C${r.valori?.durata_min ? ' · ' + r.valori.durata_min + ' min' : ''}</div>
+            </div>
+          </div>
+        `).join('')}
       </div>
-
-      <div style="display: flex; gap: 10px;">
-        <div style="flex: 1;">
-          <label style="font-weight: bold; font-size: 13px;">Ora Inizio</label>
-          <input type="time" id="proc_ora_inizio">
-        </div>
-        <div style="flex: 1;">
-          <label style="font-weight: bold; font-size: 13px;">Ora Fine</label>
-          <input type="time" id="proc_ora_fine">
-        </div>
-      </div>
-
-      <button type="button" id="btn-save-proc" style="padding: 12px; background-color: #2b5c3a; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 5px;">Registra Processo</button>
-    </form>
+    `}
   `;
 
-  container.querySelector('#btn-save-proc').addEventListener('click', async () => {
-    const tipo = container.querySelector('#proc_tipo').value;
-    const prodotto = container.querySelector('#proc_prodotto').value.trim();
-    if (!prodotto) {
-      alert('Inserisci il nome del prodotto.');
-      return;
-    }
+  container.querySelector('#reg-salva').addEventListener('click', async (e) => {
+    const prodotto = container.querySelector('#reg-prodotto').value.trim();
+    if (!prodotto) { alert('Inserisci il nome del prodotto/preparazione.'); return; }
 
+    const btn = e.currentTarget;
+    btn.disabled = true;
     try {
-      await addDoc(collection(db, "registro_processi"), {
-        data: today,
-        tipo,
+      await aggiungi('registrazioni_processo', {
+        tipo: container.querySelector('#reg-tipo').value,
         prodotto,
-        quantita: container.querySelector('#proc_quantita').value,
-        temp_inizio: container.querySelector('#proc_temp_inizio').value,
-        temp_fine: container.querySelector('#proc_temp_fine').value,
-        ora_inizio: container.querySelector('#proc_ora_inizio').value,
-        ora_fine: container.querySelector('#proc_ora_fine').value,
-        timestamp: serverTimestamp()
-      });
-      alert('Processo registrato!');
-      container.querySelector('#proc-form').reset();
+        valori: {
+          temperatura_inizio_c: container.querySelector('#reg-temp-inizio').value || null,
+          temperatura_fine_c: container.querySelector('#reg-temp-fine').value || null,
+          durata_min: container.querySelector('#reg-durata').value || null,
+          lotto_materia_prima: container.querySelector('#reg-lotto').value || null,
+          note: container.querySelector('#reg-note').value || null,
+        },
+        esito: null,
+        registrato_da: profilo.id,
+      }, 'registrato_il');
+      renderRegistroPage(container, profilo);
     } catch (err) {
       console.error(err);
-      alert('Errore salvataggio.');
+      alert('Errore durante il salvataggio.');
+      btn.disabled = false;
     }
   });
 }
