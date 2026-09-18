@@ -7,7 +7,7 @@ import { leggiTutti, aggiungi, where, orderBy, oggiISO, inizioEFineGiorno } from
 export async function renderTemperaturePage(container, profilo) {
   container.innerHTML = `<div class="empty-state">Caricamento apparecchiature…</div>`;
 
-  const apparecchiature = await leggiTutti('attrezzature', [where('attivo', '==', true), orderBy('ordine', 'asc')]);
+  const apparecchiature = (await leggiTutti('attrezzature')).sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
 
   if (apparecchiature.length === 0) {
     container.innerHTML = `

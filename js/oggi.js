@@ -3,7 +3,7 @@ import { leggiTutti, inizioEFineGiorno, oggiISO, where, orderBy } from './store.
 export async function renderOggi(container, profilo, vaiA) {
   const { inizio, fine } = inizioEFineGiorno(oggiISO());
 
-  const apparecchiature = await leggiTutti('attrezzature', [where('attivo', '==', true)]);
+  const apparecchiature = await leggiTutti('attrezzature');
   const rilevazioni = await leggiTutti('rilevazioni_temperatura', [where('registrato_il', '>=', inizio), where('registrato_il', '<=', fine)]);
   const apparecchiatureRilevate = new Set(rilevazioni.map((r) => r.apparecchiatura_id));
   const fuoriRange = rilevazioni.some((r) => r.esito === 'fuori_limite');
