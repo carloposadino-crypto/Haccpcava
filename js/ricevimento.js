@@ -25,7 +25,7 @@ export async function renderRicezioniPage(container, profilo) {
     <div class="list-card" style="border:1px dashed #2b5c3a;">
       <div style="font-size:13px; font-weight:bold; color:#2b5c3a; margin-bottom:6px;">✨ Leggi la bolla con una foto</div>
       <div style="font-size:12px; color:#475569; margin-bottom:10px;">Riconosce fornitore e prodotti automaticamente. Controlli e correggi tutto prima di salvare.</div>
-      <input type="file" id="rc-file-input" accept="image/*" capture="environment" style="display:none;">
+      <input type="file" id="rc-file-input" accept="image/*" style="display:none;">
       <button type="button" class="btn btn-secondary btn-block" id="rc-btn-foto">📷 Fotografa la bolla</button>
       <div id="rc-import-status" style="display:none; font-size:12px; color:#2b5c3a; font-weight:bold; text-align:center; margin-top:8px;"></div>
     </div>

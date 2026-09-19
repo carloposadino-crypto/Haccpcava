@@ -6,7 +6,7 @@
 // tramite IA: i campi si riempiono da soli, ma restano sempre
 // modificabili prima di salvare.
 
-import { leggiTutti, aggiungi, aggiorna, orderBy } from './store.js';
+import { leggiTutti, aggiungi, aggiorna, elimina, orderBy } from './store.js';
 
 const STATO_LABEL = { bozza: 'Bozza', da_revisionare: 'Da revisionare', approvata: 'Approvata' };
 const STATO_BADGE = { bozza: 'badge-pending', da_revisionare: 'badge-warn', approvata: 'badge-ok' };
@@ -54,7 +54,7 @@ export async function renderRicettePage(container, profilo) {
     <div class="list-card" style="border:1px dashed #2b5c3a;">
       <div style="font-size:13px; font-weight:bold; color:#2b5c3a; margin-bottom:6px;">✨ Importazione automatica</div>
       <div style="font-size:12px; color:#475569; margin-bottom:10px;">Carica una foto/screenshot della ricetta, oppure incolla un link. Poi controlli e correggi i grammi prima di salvare.</div>
-      <input type="file" id="sc-file-input" accept="image/*" capture="environment" style="display:none;">
+      <input type="file" id="sc-file-input" accept="image/*" style="display:none;">
       <button type="button" class="btn btn-secondary btn-block" id="sc-btn-foto" style="margin-bottom:10px;">📷 Scegli foto / screenshot</button>
       <div class="form-row">
         <input type="url" id="sc-url-input" placeholder="https://sito-ricette.it/ricetta...">
@@ -93,18 +93,47 @@ export async function renderRicettePage(container, profilo) {
     ${schede.length === 0 ? '<div class="empty-state">Nessuna scheda ancora creata.</div>' : `
       <div class="list-card">
         ${schede.map((s) => `
-          <div class="check-row" style="cursor:default;" data-scheda="${s.id}">
+          <div class="check-row" data-scheda="${s.id}">
             <div class="rt">
               <div class="t">${s.nome}</div>
               <div class="s">${s.codice || ''}${s.costo_a_porzione != null ? ` · € ${s.costo_a_porzione.toFixed(2)} a porzione` : ''}</div>
             </div>
             <span class="badge ${STATO_BADGE[s.stato] || 'badge-pending'}">${STATO_LABEL[s.stato] || s.stato}</span>
             ${(s.stato !== 'approvata' && profilo.ruolo === 'responsabile') ? '<button class="btn btn-secondary sc-approva" style="margin-left:8px;">Approva</button>' : ''}
+            <span class="chev">▾</span>
+          </div>
+          <div class="sc-dettaglio" data-dettaglio="${s.id}" style="display:none; padding: 4px 4px 16px;">
+            <div style="font-size:13px; color:#374151; line-height:1.6;">
+              <strong>Porzioni:</strong> ${s.porzioni || '—'}<br>
+              <strong>Ingredienti:</strong><br>
+              ${Array.isArray(s.contenuto?.ingredienti) && s.contenuto.ingredienti.length
+                ? s.contenuto.ingredienti.map((i) => `&nbsp;&nbsp;• ${i.nome} — ${i.grammi} g`).join('<br>')
+                : '&nbsp;&nbsp;(nessun ingrediente inserito)'}
+              <br><br>
+              <strong>Processo:</strong><br>${(s.contenuto?.processo || '—').replace(/\n/g, '<br>')}<br><br>
+              <strong>Pericoli:</strong><br>${(s.contenuto?.pericoli || '—').replace(/\n/g, '<br>')}<br><br>
+              <strong>Misure di controllo:</strong><br>${(s.contenuto?.misure_controllo || '—').replace(/\n/g, '<br>')}<br><br>
+              <strong>CCP:</strong><br>${(s.contenuto?.ccp || '—').replace(/\n/g, '<br>')}<br><br>
+              <strong>Note:</strong><br>${(s.contenuto?.note || '—').replace(/\n/g, '<br>')}
+            </div>
+            ${s.stato !== 'approvata' ? `<button class="btn btn-danger sc-elimina" data-elimina="${s.id}" style="margin-top:14px;">Elimina scheda</button>` : ''}
           </div>
         `).join('')}
       </div>
     `}
   `;
+
+  container.querySelectorAll('[data-scheda]').forEach((riga) => {
+    riga.addEventListener('click', (e) => {
+      if (e.target.classList.contains('sc-approva') || e.target.classList.contains('sc-elimina')) return;
+      const id = riga.dataset.scheda;
+      const dettaglio = container.querySelector(`[data-dettaglio="${id}"]`);
+      const chev = riga.querySelector('.chev');
+      const aperto = dettaglio.style.display !== 'none';
+      dettaglio.style.display = aperto ? 'none' : 'block';
+      if (chev) chev.textContent = aperto ? '▾' : '▴';
+    });
+  });
 
   function calcolaCosto() {
     let costoTotale = 0;
@@ -248,6 +277,22 @@ export async function renderRicettePage(container, profilo) {
       } catch (err) {
         console.error(err);
         alert('Errore durante l\'approvazione.');
+        e.currentTarget.disabled = false;
+      }
+    });
+  });
+
+  container.querySelectorAll('.sc-elimina').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (!confirm('Eliminare definitivamente questa scheda? Non si può annullare.')) return;
+      e.currentTarget.disabled = true;
+      try {
+        await elimina('schede_haccp', btn.dataset.elimina);
+        renderRicettePage(container, profilo);
+      } catch (err) {
+        console.error(err);
+        alert('Errore durante l\'eliminazione.');
         e.currentTarget.disabled = false;
       }
     });

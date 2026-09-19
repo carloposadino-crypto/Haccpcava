@@ -91,7 +91,7 @@ service cloud.firestore {
       allow update: if autenticato() && (
         request.resource.data.stato != 'approvata' || eResponsabile()
       );
-      allow delete: if false;
+      allow delete: if autenticato() && resource.data.stato != 'approvata';
     }
     match /documenti/{id} {
       allow read: if autenticato();
