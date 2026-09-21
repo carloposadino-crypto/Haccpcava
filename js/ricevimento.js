@@ -15,7 +15,8 @@ function rigaVuota() {
 export async function renderRicezioniPage(container, profilo) {
   container.innerHTML = `<div class="empty-state">Caricamento…</div>`;
 
-  const listaGiorno = await leggiTutti('ricevimenti', [where('data_riferimento', '==', dataSelezionata), orderBy('registrato_il', 'desc')]);
+  const listaGiorno = (await leggiTutti('ricevimenti', [where('data_riferimento', '==', dataSelezionata)]))
+    .sort((a, b) => (b.registrato_il?.seconds || 0) - (a.registrato_il?.seconds || 0));
 
   righeCorrenti = [rigaVuota()];
   const isOggi = dataSelezionata === oggiISO();
