@@ -266,4 +266,5 @@ input:focus, select:focus, textarea:focus {
 
 @media print {
   .no-print { display: none !important; }
+  .print-only { display: block !important; }
 }

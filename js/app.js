@@ -55,14 +55,14 @@ function mostraLogin() {
 
 function mostraApp() {
   root.innerHTML = `
-    <header class="app-header">
+    <header class="app-header no-print">
       <div class="app-header-row">
         <h1 style="font-size:18px; margin:0;">🍷 La Cava · HACCP</h1>
         <button class="btn-anomaly" id="btn-anomalia" title="Segnala anomalia">!</button>
       </div>
     </header>
     <main id="content-area" style="padding: 12px 12px 90px;"></main>
-    <nav class="bottom-nav">
+    <nav class="bottom-nav no-print">
       ${NAV_PRINCIPALE.map(([id, icon, label]) => `
         <button class="nav-btn ${id === tabCorrente ? 'active' : ''}" data-tab="${id}">
           <span class="nav-icon">${icon}</span>${label}

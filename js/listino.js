@@ -8,10 +8,17 @@
 import { leggiTutti, aggiungi, aggiorna, orderBy } from './store.js';
 
 let righeDaConfermare = [];
+let listinoAttuale = [];
+
+function trovaVoceEsistente(nome) {
+  const cercato = nome.trim().toLowerCase();
+  return listinoAttuale.find((v) => v.nome.trim().toLowerCase() === cercato);
+}
 
 export async function renderListinoPage(container) {
   container.innerHTML = `<div class="empty-state">Caricamento…</div>`;
   const voci = await leggiTutti('listino_prezzi', [orderBy('nome', 'asc')]).catch(() => []);
+  listinoAttuale = voci;
 
   container.innerHTML = `
     <div class="top-bar"><h2>Listino prezzi</h2></div>
@@ -55,15 +62,21 @@ export async function renderListinoPage(container) {
   container.querySelector('#ls-salva').addEventListener('click', async (e) => {
     const nome = container.querySelector('#ls-nome').value.trim();
     const prezzo = parseFloat(container.querySelector('#ls-prezzo').value);
-    if (!nome || Number.isNaN(prezzo)) { alert('Inserisci nome e prezzo.'); return; }
+    if (!nome || Number.isNaN(prezzo) || prezzo <= 0) { alert('Inserisci nome e un prezzo maggiore di zero.'); return; }
 
     e.currentTarget.disabled = true;
     try {
-      await aggiungi('listino_prezzi', {
-        nome,
-        prezzo_kg: prezzo,
-        fornitore: container.querySelector('#ls-fornitore').value || null,
-      }, 'aggiornato_il');
+      const esistente = trovaVoceEsistente(nome);
+      const fornitore = container.querySelector('#ls-fornitore').value || null;
+      if (esistente) {
+        if (!confirm(`"${esistente.nome}" è già nel listino (€ ${esistente.prezzo_kg}/kg). Vuoi aggiornarne il prezzo a € ${prezzo}/kg invece di crearne uno nuovo?`)) {
+          e.currentTarget.disabled = false;
+          return;
+        }
+        await aggiorna('listino_prezzi', esistente.id, { prezzo_kg: prezzo, fornitore, aggiornato_il: new Date() });
+      } else {
+        await aggiungi('listino_prezzi', { nome, prezzo_kg: prezzo, fornitore }, 'aggiornato_il');
+      }
       renderListinoPage(container);
     } catch (err) {
       console.error(err);
@@ -76,7 +89,7 @@ export async function renderListinoPage(container) {
     const input = container.querySelector(`[data-riga="${v.id}"] .ls-mod-prezzo`);
     input.addEventListener('change', async () => {
       const nuovoPrezzo = parseFloat(input.value);
-      if (Number.isNaN(nuovoPrezzo)) return;
+      if (Number.isNaN(nuovoPrezzo) || nuovoPrezzo <= 0) { alert('Il prezzo deve essere maggiore di zero.'); input.value = v.prezzo_kg; return; }
       try {
         await aggiorna('listino_prezzi', v.id, { prezzo_kg: nuovoPrezzo, aggiornato_il: new Date() });
       } catch (err) {
@@ -164,17 +177,23 @@ function disegnaRevisione(container) {
   wrap.querySelector('#ls-annulla-import').addEventListener('click', () => { righeDaConfermare = []; wrap.innerHTML = ''; });
 
   wrap.querySelector('#ls-conferma-import').addEventListener('click', async (e) => {
-    const daSalvare = righeDaConfermare.filter((r) => r.includi && r.nome.trim() && r.prezzo_kg !== '' && !Number.isNaN(parseFloat(r.prezzo_kg)));
-    if (daSalvare.length === 0) { alert('Seleziona almeno una riga valida.'); return; }
+    const daSalvare = righeDaConfermare.filter((r) => r.includi && r.nome.trim() && r.prezzo_kg !== '' && !Number.isNaN(parseFloat(r.prezzo_kg)) && parseFloat(r.prezzo_kg) > 0);
+    const scartatePerPrezzo = righeDaConfermare.filter((r) => r.includi && r.nome.trim() && (r.prezzo_kg === '' || Number.isNaN(parseFloat(r.prezzo_kg)) || parseFloat(r.prezzo_kg) <= 0)).length;
+    if (daSalvare.length === 0) { alert('Nessuna riga valida da salvare (serve un nome e un prezzo maggiore di zero).'); return; }
+    if (scartatePerPrezzo > 0 && !confirm(`${scartatePerPrezzo} riga/e selezionate hanno un prezzo mancante o non valido e verranno saltate. Continuare con le altre ${daSalvare.length}?`)) return;
 
     e.currentTarget.disabled = true;
     try {
+      let aggiornate = 0, nuove = 0;
       for (const r of daSalvare) {
-        await aggiungi('listino_prezzi', {
-          nome: r.nome.trim(),
-          prezzo_kg: parseFloat(r.prezzo_kg),
-          fornitore: r.fornitore || null,
-        }, 'aggiornato_il');
+        const esistente = trovaVoceEsistente(r.nome);
+        if (esistente) {
+          await aggiorna('listino_prezzi', esistente.id, { prezzo_kg: parseFloat(r.prezzo_kg), fornitore: r.fornitore || esistente.fornitore || null, aggiornato_il: new Date() });
+          aggiornate++;
+        } else {
+          await aggiungi('listino_prezzi', { nome: r.nome.trim(), prezzo_kg: parseFloat(r.prezzo_kg), fornitore: r.fornitore || null }, 'aggiornato_il');
+          nuove++;
+        }
       }
       righeDaConfermare = [];
       renderListinoPage(container);
