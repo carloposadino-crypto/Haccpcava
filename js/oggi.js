@@ -2,21 +2,22 @@ import { leggiTutti, inizioEFineGiorno, oggiISO, where, orderBy } from './store.
 
 export async function renderOggi(container, profilo, vaiA) {
   const { inizio, fine } = inizioEFineGiorno(oggiISO());
+  const oggi = oggiISO();
 
   const apparecchiature = await leggiTutti('attrezzature');
-  const rilevazioni = await leggiTutti('rilevazioni_temperatura', [where('registrato_il', '>=', inizio), where('registrato_il', '<=', fine)]);
+  const rilevazioni = await leggiTutti('rilevazioni_temperatura', [where('data_riferimento', '==', oggi)]);
   const apparecchiatureRilevate = new Set(rilevazioni.map((r) => r.apparecchiatura_id));
   const fuoriRange = rilevazioni.some((r) => r.esito === 'fuori_limite');
 
   let processiOggi = 0;
   for (const tipo of ['cbt', 'abbattimento', 'rigenerazione']) {
-    const r = await leggiTutti('registrazioni_processo', [where('tipo', '==', tipo), where('registrato_il', '>=', inizio), where('registrato_il', '<=', fine)]);
+    const r = await leggiTutti('registrazioni_processo', [where('tipo', '==', tipo), where('data_riferimento', '==', oggi)]);
     processiOggi += r.length;
   }
 
   const piano = await leggiTutti('piano_pulizie', [where('attivo', '==', true)]);
   const pianoGiornaliero = piano.filter((v) => v.frequenza === 'giornaliera');
-  const pulizieOggi = await leggiTutti('registrazioni_pulizia', [where('registrato_il', '>=', inizio), where('registrato_il', '<=', fine)]);
+  const pulizieOggi = await leggiTutti('registrazioni_pulizia', [where('data_riferimento', '==', oggi)]);
   const voceIdCompletate = new Set(pulizieOggi.map((p) => p.voce_id));
   const pulizieDoneCount = pianoGiornaliero.filter((v) => voceIdCompletate.has(v.id)).length;
 

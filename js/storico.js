@@ -105,10 +105,11 @@ export async function renderStoricoPage(container) {
       <div class="list-card">${righeHtml || `<div class="empty-state">${vuoto}</div>`}</div>
     `;
 
-    const temperature = datiCompleti.temperature.filter((t) => nelPeriodo(dataDi(t, 'registrato_il')));
-    const processi = datiCompleti.processi.filter((p) => nelPeriodo(dataDi(p, 'registrato_il')));
-    const pulizie = datiCompleti.pulizie.filter((p) => nelPeriodo(dataDi(p, 'registrato_il')));
-    const ricevimenti = datiCompleti.ricevimenti.filter((r) => nelPeriodo(dataDi(r, 'registrato_il')));
+    const dataRif = (record, campoFallback) => record.data_riferimento ? new Date(record.data_riferimento + 'T12:00:00') : dataDi(record, campoFallback);
+    const temperature = datiCompleti.temperature.filter((t) => nelPeriodo(dataRif(t, 'registrato_il')));
+    const processi = datiCompleti.processi.filter((p) => nelPeriodo(dataRif(p, 'registrato_il')));
+    const pulizie = datiCompleti.pulizie.filter((p) => nelPeriodo(dataRif(p, 'registrato_il')));
+    const ricevimenti = datiCompleti.ricevimenti.filter((r) => nelPeriodo(dataRif(r, 'registrato_il')));
     const nonConformita = datiCompleti.non_conformita.filter((n) => nelPeriodo(dataDi(n, 'aperto_il')));
     const schede = datiCompleti.schede.filter((s) => nelPeriodo(dataDi(s, 'creato_il')));
 

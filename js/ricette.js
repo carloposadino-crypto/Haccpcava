@@ -22,8 +22,12 @@ function rigaVuota() { return { nome: '', grammi: '' }; }
 function trovaPrezzoKg(nomeIngrediente) {
   const cercato = nomeIngrediente.trim().toLowerCase();
   if (!cercato) return null;
-  let voce = listinoCorrente.find((v) => v.nome.trim().toLowerCase() === cercato);
-  if (!voce) voce = listinoCorrente.find((v) => cercato.includes(v.nome.trim().toLowerCase()) || v.nome.trim().toLowerCase().includes(cercato));
+  // Solo corrispondenza esatta: un abbinamento "approssimato" (es. "Olio"
+  // che aggancia "Olio di semi") potrebbe sembrare corretto ma non esserlo,
+  // e il costo mostrato sarebbe sbagliato senza che nessuno se ne accorga.
+  // Meglio segnalare "prezzo non trovato" e farlo aggiungere con lo stesso
+  // nome esatto nel Listino.
+  const voce = listinoCorrente.find((v) => v.nome.trim().toLowerCase() === cercato);
   return voce ? voce.prezzo_kg : null;
 }
 

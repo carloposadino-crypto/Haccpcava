@@ -3,9 +3,10 @@
 // prodotto (aggiungibili a mano oppure riempite in automatico
 // scattando/caricando una foto del documento, via /api/ocr).
 
-import { leggiTutti, aggiungi, where, orderBy, oggiISO, inizioEFineGiorno } from './store.js';
+import { leggiTutti, aggiungi, where, orderBy, oggiISO } from './store.js';
 
 let righeCorrenti = [];
+let dataSelezionata = oggiISO();
 
 function rigaVuota() {
   return { nome: '', quantita: '', lotto: '' };
@@ -14,13 +15,19 @@ function rigaVuota() {
 export async function renderRicezioniPage(container, profilo) {
   container.innerHTML = `<div class="empty-state">Caricamento…</div>`;
 
-  const { inizio, fine } = inizioEFineGiorno(oggiISO());
-  const oggiList = await leggiTutti('ricevimenti', [where('registrato_il', '>=', inizio), where('registrato_il', '<=', fine), orderBy('registrato_il', 'desc')]);
+  const listaGiorno = await leggiTutti('ricevimenti', [where('data_riferimento', '==', dataSelezionata), orderBy('registrato_il', 'desc')]);
 
   righeCorrenti = [rigaVuota()];
+  const isOggi = dataSelezionata === oggiISO();
 
   container.innerHTML = `
     <div class="top-bar"><h2>Ricevimento merci</h2></div>
+
+    <div class="list-card no-print">
+      <label class="field-label">Data</label>
+      <input type="date" id="rc-data" value="${dataSelezionata}" max="${oggiISO()}">
+      ${!isOggi ? '<div style="font-size:12px; color:#b45309; margin-top:6px;">⚠️ Stai registrando per una data passata, non per oggi.</div>' : ''}
+    </div>
 
     <div class="list-card" style="border:1px dashed #2b5c3a;">
       <div style="font-size:13px; font-weight:bold; color:#2b5c3a; margin-bottom:6px;">✨ Leggi la bolla con una foto</div>
@@ -52,10 +59,10 @@ export async function renderRicezioniPage(container, profilo) {
       <button class="btn btn-primary btn-block" id="rc-salva">Registra ricevimento</button>
     </div>
 
-    <h3 style="font-size:14px; color:#64748b; margin: 16px 0 8px;">Oggi (${oggiList.length})</h3>
-    ${oggiList.length === 0 ? '<div class="empty-state">Nessun ricevimento registrato oggi.</div>' : `
+    <h3 style="font-size:14px; color:#64748b; margin: 16px 0 8px;">Registrati il ${dataSelezionata} (${listaGiorno.length})</h3>
+    ${listaGiorno.length === 0 ? '<div class="empty-state">Nessun ricevimento registrato in questa data.</div>' : `
       <div class="list-card">
-        ${oggiList.map((r) => `
+        ${listaGiorno.map((r) => `
           <div class="check-row" style="cursor:default;">
             <span class="dot ${r.conformita === 'non_conforme' ? 'warn' : 'ok'}"></span>
             <div class="rt">
@@ -67,6 +74,11 @@ export async function renderRicezioniPage(container, profilo) {
       </div>
     `}
   `;
+
+  container.querySelector('#rc-data').addEventListener('change', (e) => {
+    dataSelezionata = e.target.value;
+    renderRicezioniPage(container, profilo);
+  });
 
   function disegnaRighe() {
     const wrap = container.querySelector('#rc-righe');
@@ -141,6 +153,7 @@ export async function renderRicezioniPage(container, profilo) {
         temperatura: container.querySelector('#rc-temperatura').value || null,
         conformita,
         note: container.querySelector('#rc-note').value,
+        data_riferimento: dataSelezionata,
         registrato_da: profilo.id,
       }, 'registrato_il');
 
