@@ -1,16 +1,19 @@
-// Registro Cotture, Abbattimenti e Rigenerazioni (registrazioni_processo).
-// Si può scegliere la data (di solito oggi, ma anche un giorno passato
-// dimenticato). Una registrazione già salvata non si sovrascrive mai:
-// per correggerla si aggiunge una correzione collegata, e l'originale
-// resta sempre visibile e consultabile.
+// Registro Processi La Cava HACCP.
+// Le registrazioni nuove possono essere create solo per la data odierna.
+// Le registrazioni esistenti restano consultabili; eventuali correzioni
+// vengono aggiunte come nuovi record collegati all'originale.
 
 import { leggiTutti, aggiungi, where, oggiISO } from './store.js';
 
 const TIPI = [
-  ['cottura', 'Cottura normale'],
-  ['cbt', 'Cottura Sottovuoto / Roner (CBT)'],
-  ['abbattimento', 'Abbattimento (positivo/negativo)'],
+  ['cottura', 'Cottura tradizionale'],
+  ['cbt', 'Cottura CBT / Roner'],
+  ['abbattimento', 'Abbattimento positivo / negativo'],
+  ['congelamento', 'Congelamento interno'],
+  ['sottovuoto', 'Sottovuoto'],
   ['rigenerazione', 'Rigenerazione'],
+  ['scongelamento', 'Scongelamento controllato'],
+  ['crudo_pronto', 'Preparazione cruda / pronta al consumo'],
 ];
 
 let dataSelezionata = oggiISO();
@@ -36,15 +39,16 @@ export async function renderRegistroPage(container, profilo) {
     <div class="list-card no-print">
       <label class="field-label">Data</label>
       <input type="date" id="reg-data" value="${dataSelezionata}" max="${oggiISO()}">
-      ${!isOggi ? '<div style="font-size:12px; color:#b45309; margin-top:6px;">⚠️ Stai registrando per una data passata, non per oggi.</div>' : ''}
+      ${!isOggi ? '<div style="font-size:12px; color:#b45309; margin-top:6px;">⚠️ Giorno passato: consultazione soltanto. Non è possibile creare una nuova registrazione per questa data.</div>' : ''}
     </div>
 
+    ${isOggi ? `
     <div class="list-card">
       <label class="field-label">Tipo di processo</label>
       <select id="reg-tipo">${TIPI.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
 
       <label class="field-label">Prodotto / preparazione</label>
-      <input type="text" id="reg-prodotto" placeholder="Es. Vitello per Tonnato, Brasato...">
+      <input type="text" id="reg-prodotto" placeholder="Es. Vitello per tonnato, punta di petto...">
 
       <div class="form-row">
         <div><label class="field-label">Temp. inizio (°C)</label><input type="number" step="0.1" id="reg-temp-inizio"></div>
@@ -54,10 +58,10 @@ export async function renderRegistroPage(container, profilo) {
         <div><label class="field-label">Durata (minuti)</label><input type="number" id="reg-durata"></div>
         <div><label class="field-label">Lotto materia prima</label><input type="text" id="reg-lotto"></div>
       </div>
-      <label class="field-label">Note</label>
-      <textarea id="reg-note" placeholder="Eventuali note utili al controllo"></textarea>
+      <label class="field-label">Note / procedura collegata</label>
+      <textarea id="reg-note" placeholder="Parametri o note utili al controllo"></textarea>
       <button class="btn btn-primary btn-block" id="reg-salva">Registra</button>
-    </div>
+    </div>` : ''}
 
     <h3 style="font-size:14px; color:#64748b; margin: 16px 0 8px;">Registrate il ${dataSelezionata} (${originali.length})</h3>
     ${originali.length === 0 ? '<div class="empty-state">Nessuna registrazione in questa data.</div>' : `
@@ -70,7 +74,7 @@ export async function renderRegistroPage(container, profilo) {
             <div style="display:flex; align-items:center; gap:12px;">
               <div class="rt">
                 <div class="t">${TIPI.find(([v]) => v === r.tipo)?.[1] || r.tipo} — ${r.prodotto || ''}</div>
-                <div class="s">${r.valori?.temperatura_inizio_c ?? '—'}°C → ${r.valori?.temperatura_fine_c ?? '—'}°C${r.valori?.durata_min ? ' · ' + r.valori.durata_min + ' min' : ''}</div>
+                <div class="s">${r.valori?.temperatura_inizio_c ?? '—'}°C → ${r.valori?.temperatura_fine_c ?? '—'}°C${r.valori?.durata_min ? ' · ' + r.valori.durata_min + ' min' : ''}${r.valori?.lotto_materia_prima ? ' · Lotto: ' + r.valori.lotto_materia_prima : ''}</div>
               </div>
               ${!ultima ? `<button class="btn btn-secondary reg-correggi-btn" data-correggi="${r.id}" style="flex:0 0 auto;">Correggi</button>` : ''}
             </div>
@@ -105,7 +109,14 @@ export async function renderRegistroPage(container, profilo) {
     renderRegistroPage(container, profilo);
   });
 
-  container.querySelector('#reg-salva').addEventListener('click', async (e) => {
+  const salvaBtn = container.querySelector('#reg-salva');
+  if (salvaBtn) salvaBtn.addEventListener('click', async (e) => {
+    // Difesa lato client: una registrazione nuova può essere creata solo oggi.
+    if (dataSelezionata !== oggiISO()) {
+      alert('Le nuove registrazioni possono essere effettuate solo per la data odierna.');
+      return;
+    }
+
     const prodotto = container.querySelector('#reg-prodotto').value.trim();
     if (!prodotto) { alert('Inserisci il nome del prodotto/preparazione.'); return; }
 
@@ -123,7 +134,7 @@ export async function renderRegistroPage(container, profilo) {
           note: container.querySelector('#reg-note').value || null,
         },
         esito: null,
-        data_riferimento: dataSelezionata,
+        data_riferimento: oggiISO(),
         registrato_da: profilo.id,
       }, 'registrato_il');
       renderRegistroPage(container, profilo);
