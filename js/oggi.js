@@ -1,13 +1,23 @@
 import { leggiTutti, inizioEFineGiorno, oggiISO, where, orderBy } from './store.js';
 
+function isAbbattitore(a) {
+  const nome = String(a.nome || '').toLowerCase();
+  const tipo = String(a.tipo || '').toLowerCase();
+  return tipo === 'abbattitore' || nome.includes('abbattitore');
+}
+
 export async function renderOggi(container, profilo, vaiA) {
   const { inizio, fine } = inizioEFineGiorno(oggiISO());
   const oggi = oggiISO();
 
-  const apparecchiature = await leggiTutti('attrezzature');
+  // L'abbattitore non è un'apparecchiatura soggetta al controllo giornaliero:
+  // viene controllato nel Registro Processi quando viene utilizzato.
+  const tutteApparecchiature = await leggiTutti('attrezzature');
+  const apparecchiature = tutteApparecchiature.filter((a) => !isAbbattitore(a));
   const rilevazioni = await leggiTutti('rilevazioni_temperatura', [where('data_riferimento', '==', oggi)]);
-  const apparecchiatureRilevate = new Set(rilevazioni.map((r) => r.apparecchiatura_id));
-  const fuoriRange = rilevazioni.some((r) => r.esito === 'fuori_limite');
+  const rilevazioniConservazione = rilevazioni.filter((r) => apparecchiature.some((a) => a.id === r.apparecchiatura_id));
+  const apparecchiatureRilevate = new Set(rilevazioniConservazione.map((r) => r.apparecchiatura_id));
+  const fuoriRange = rilevazioniConservazione.some((r) => r.esito === 'fuori_limite');
 
   let processiOggi = 0;
   for (const tipo of ['cbt', 'abbattimento', 'rigenerazione']) {
