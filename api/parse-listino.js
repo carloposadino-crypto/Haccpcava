@@ -16,7 +16,21 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Nessun file fornito.' });
     }
 
-    const cleanBase64 = file.includes(',') ? file.split(',')[1] : file;
+    if (typeof file !== 'string' || !file.startsWith('data:')) {
+      return res.status(400).json({ error: 'Il file non è in un formato valido.' });
+    }
+
+    const cleanBase64 = file.split(',')[1] || '';
+    if (!cleanBase64) {
+      return res.status(400).json({ error: 'Il file è vuoto o non leggibile.' });
+    }
+
+    const tipo = mimeType || file.slice(5, file.indexOf(';')) || 'application/pdf';
+    const tipiConsentiti = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+    if (!tipiConsentiti.includes(tipo)) {
+      return res.status(400).json({ error: 'Formato non supportato. Usa PDF, JPG, PNG, WEBP o HEIC/HEIF.' });
+    }
+
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
@@ -44,7 +58,7 @@ module.exports = async function handler(req, res) {
                 + '  ]\n'
                 + '}',
             },
-            { inline_data: { mime_type: mimeType || 'application/pdf', data: cleanBase64 } },
+            { inline_data: { mime_type: tipo, data: cleanBase64 } },
           ],
         }],
       }),
