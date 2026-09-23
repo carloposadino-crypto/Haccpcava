@@ -4,13 +4,14 @@
 
 import { leggiTutti, orderBy } from './store.js';
 
-const TIPO_LABEL = { cottura: 'Cottura normale', cbt: 'Sottovuoto/Roner (CBT)', abbattimento: 'Abbattimento', rigenerazione: 'Rigenerazione' };
+const TIPO_LABEL = { cottura: 'Cottura normale', cbt: 'Sottovuoto/Roner (CBT)', abbattimento: 'Abbattimento', congelamento: 'Congelamento', sottovuoto: 'Sottovuoto', rigenerazione: 'Rigenerazione', scongelamento: 'Scongelamento', crudo_pronto: 'Preparazione a crudo' };
 
 const CATEGORIE = [
   ['temperature', 'Temperature'],
   ['processi', 'Cotture/Abbattimenti/Rigenerazioni'],
   ['pulizie', 'Pulizie effettuate'],
   ['ricevimenti', 'Ricevimento merci'],
+  ['conservazioni', 'Conservazioni'],
   ['non_conformita', 'Non conformità'],
   ['schede', 'Schede HACCP'],
 ];
@@ -33,15 +34,16 @@ export async function renderStoricoPage(container) {
   container.innerHTML = `<div class="empty-state">Caricamento…</div>`;
 
   if (!datiCompleti) {
-    const [temperature, processi, pulizie, ricevimenti, nonConformita, schede] = await Promise.all([
+    const [temperature, processi, pulizie, ricevimenti, conservazioni, nonConformita, schede] = await Promise.all([
       leggiTutti('rilevazioni_temperatura', [orderBy('registrato_il', 'desc')]).catch(() => []),
       leggiTutti('registrazioni_processo', [orderBy('registrato_il', 'desc')]).catch(() => []),
       leggiTutti('registrazioni_pulizia', [orderBy('registrato_il', 'desc')]).catch(() => []),
       leggiTutti('ricevimenti', [orderBy('registrato_il', 'desc')]).catch(() => []),
+      leggiTutti('conservazioni', [orderBy('registrato_il', 'desc')]).catch(() => []),
       leggiTutti('non_conformita', [orderBy('aperto_il', 'desc')]).catch(() => []),
       leggiTutti('schede_haccp', [orderBy('creato_il', 'desc')]).catch(() => []),
     ]);
-    datiCompleti = { temperature, processi, pulizie, ricevimenti, non_conformita: nonConformita, schede };
+    datiCompleti = { temperature, processi, pulizie, ricevimenti, conservazioni, non_conformita: nonConformita, schede };
   }
 
   const oggi = new Date().toISOString().slice(0, 10);
@@ -110,6 +112,7 @@ export async function renderStoricoPage(container) {
     const processi = datiCompleti.processi.filter((p) => nelPeriodo(dataRif(p, 'registrato_il')));
     const pulizie = datiCompleti.pulizie.filter((p) => nelPeriodo(dataRif(p, 'registrato_il')));
     const ricevimenti = datiCompleti.ricevimenti.filter((r) => nelPeriodo(dataRif(r, 'registrato_il')));
+    const conservazioni = datiCompleti.conservazioni.filter((c) => nelPeriodo(dataRif(c, 'registrato_il')));
     const nonConformita = datiCompleti.non_conformita.filter((n) => nelPeriodo(dataDi(n, 'aperto_il')));
     const schede = datiCompleti.schede.filter((s) => nelPeriodo(dataDi(s, 'creato_il')));
 
@@ -143,6 +146,15 @@ export async function renderStoricoPage(container) {
           <div class="rt">
             <div class="t">${r.fornitore_nome}${r.numero_documento ? ' — ' + r.numero_documento : ''}</div>
             <div class="s">${(r.voci || []).map((v) => v.nome).join(', ') || '—'} · ${fmt(r.registrato_il)}</div>
+          </div>
+        </div>
+      `).join(''), 'Nessuna registrazione nel periodo scelto.')}
+
+      ${sezione('conservazioni', `Conservazioni (${conservazioni.length})`, conservazioni.map((c) => `
+        <div class="check-row" style="cursor:default;">
+          <div class="rt">
+            <div class="t">${c.prodotto || '—'}${c.lotto ? ' — lotto ' + c.lotto : ''}</div>
+            <div class="s">${c.tipo_conservazione_label || c.tipo_conservazione || '—'}${c.apparecchiatura_nome ? ' · ' + c.apparecchiatura_nome : ''}${c.scadenza ? ' · scad. ' + c.scadenza : ''} · ${fmt(c.registrato_il)}</div>
           </div>
         </div>
       `).join(''), 'Nessuna registrazione nel periodo scelto.')}
