@@ -165,6 +165,8 @@ export async function renderConservazionePage(container, profilo) {
             `).join('')}
         </div>
       `
+    }
+
   `;
 
   const dataInput = container.querySelector('#cv-data');
