@@ -8,6 +8,7 @@ export function renderAltro(container, vaiA, onLogout) {
     ['prodotti', 'Prodotti', 'Anagrafica e allergeni'],
     ['ricevimento', 'Ricevimento merci', 'Fornitore, prodotto, lotto'],
     ['conservazione', 'Conservazione', 'Collega processo, lotto e stoccaggio'],
+    ['servizio', 'Servizio', 'Collega conservazione, lotto e utilizzo'],
     ['schede', 'Schede HACCP', 'Preparazioni, versioni, approvazione'],
     ['listino', 'Listino prezzi', 'Prezzi fornitori per il food cost'],
     ['etichette', 'Etichette', 'Genera e stampa etichette'],
