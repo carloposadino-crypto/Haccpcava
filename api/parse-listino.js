@@ -3,27 +3,20 @@
 // L'utente controlla e conferma ogni riga prima che venga salvata.
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Metodo non consentito. Usa POST.' });
-  }
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Metodo non consentito. Usa POST.' });
 
   try {
     let body = req.body || {};
     if (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) {} }
     const { file, mimeType } = body;
 
-    if (!file) {
-      return res.status(400).json({ error: 'Nessun file fornito.' });
-    }
-
+    if (!file) return res.status(400).json({ error: 'Nessun file fornito.' });
     if (typeof file !== 'string' || !file.startsWith('data:')) {
       return res.status(400).json({ error: 'Il file non è in un formato valido.' });
     }
 
     const cleanBase64 = file.split(',')[1] || '';
-    if (!cleanBase64) {
-      return res.status(400).json({ error: 'Il file è vuoto o non leggibile.' });
-    }
+    if (!cleanBase64) return res.status(400).json({ error: 'Il file è vuoto o non leggibile.' });
 
     const tipo = mimeType || file.slice(5, file.indexOf(';')) || 'application/pdf';
     const tipiConsentiti = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
@@ -31,55 +24,86 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Formato non supportato. Usa PDF, JPG, PNG, WEBP o HEIC/HEIF.' });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    // Base64 aumenta il peso di circa un terzo. Evitiamo di mandare alla
+    // funzione serverless PDF troppo grandi, che possono superare il limite HTTP.
+    const byteStimati = Math.floor(cleanBase64.length * 0.75);
+    if (tipo === 'application/pdf' && byteStimati > 3300000) {
+      return res.status(400).json({
+        error: 'Il PDF è troppo grande per l’importazione automatica (oltre circa 3,3 MB). Usa un PDF più leggero oppure una foto/screenshot delle pagine del listino.'
+      });
+    }
 
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return res.status(200).json({
         error: 'Chiave GEMINI_API_KEY non configurata su Vercel: la lettura automatica del listino non è ancora attiva.',
       });
     }
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            {
-              text: 'Analizza questo listino prezzi di un fornitore per un ristorante. '
-                + 'Per ogni riga/prodotto del listino, individua il nome dell\'ingrediente e il prezzo per kg in euro '
-                + '(se il prezzo è indicato per litro, pezzo o altra unità, riportalo comunque nel campo prezzo_kg così com\'è, '
-                + 'segnalandolo nel campo unita_originale). '
-                + 'Restituisci ESCLUSIVAMENTE un oggetto JSON con questo formato esatto, senza markdown né altro testo:\n'
-                + '{\n'
-                + '  "fornitore": "Nome Fornitore (se indicato nel documento, altrimenti stringa vuota)",\n'
-                + '  "voci": [\n'
-                + '    { "nome": "Nome Ingrediente", "prezzo_kg": 12.50, "unita_originale": "kg" }\n'
-                + '  ]\n'
-                + '}',
-            },
-            { inline_data: { mime_type: tipo, data: cleanBase64 } },
-          ],
-        }],
-      }),
-    });
+    const prompt = 'Analizza questo listino prezzi di un fornitore per un ristorante. '
+      + 'Per ogni riga/prodotto, individua il nome dell’ingrediente e il prezzo. '
+      + 'Metti un valore in prezzo_kg SOLO se il documento indica realmente un prezzo per kg. '
+      + 'Se il prezzo è per litro, pezzo, confezione o altra unità, usa prezzo_kg: null e indica l’unità in unita_originale. '
+      + 'Non inventare conversioni. '
+      + 'Restituisci ESCLUSIVAMENTE JSON valido, senza markdown, nel formato: '
+      + '{ "fornitore": "Nome o stringa vuota", "voci": [{ "nome": "Nome Ingrediente", "prezzo_kg": 12.50, "unita_originale": "kg" }] }';
 
-    const geminiData = await response.json();
-    if (!response.ok) {
-      return res.status(200).json({ error: `Errore Gemini API (${response.status}): ${geminiData.error?.message || 'chiave non valida o quota superata'}` });
+    // In caso di sovraccarico Gemini (503) o rate limit (429), riprova
+    // automaticamente e poi passa a Flash-Lite.
+    const modelli = ['gemini-flash-latest', 'gemini-flash-latest', 'gemini-2.5-flash-lite'];
+    let response = null;
+    let geminiData = null;
+    let ultimoErrore = null;
+
+    for (let i = 0; i < modelli.length; i++) {
+      if (i > 0) await new Promise(resolve => setTimeout(resolve, 900));
+
+      try {
+        const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/'
+          + modelli[i] + ':generateContent?key=' + apiKey;
+
+        response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [
+              { text: prompt },
+              { inline_data: { mime_type: tipo, data: cleanBase64 } },
+            ] }],
+          }),
+        });
+
+        geminiData = await response.json();
+        if (response.ok) break;
+
+        ultimoErrore = geminiData.error?.message || 'HTTP ' + response.status;
+        if (response.status !== 503 && response.status !== 429) break;
+      } catch (err) {
+        ultimoErrore = err.message;
+      }
+    }
+
+    if (!response || !response.ok) {
+      return res.status(200).json({
+        error: 'Errore Gemini API (' + (response?.status || 500) + '): ' + (ultimoErrore || 'servizio non disponibile')
+      });
     }
 
     const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const cleanedJson = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const cleanedJson = rawText.replace(/\`\`\`json/gi, '').replace(/\`\`\`/g, '').trim();
 
     let parsedData;
-    try { parsedData = JSON.parse(cleanedJson); } catch (e) {
-      return res.status(200).json({ error: 'La risposta dell\'IA non era in un formato leggibile. Riprova, oppure con un file più leggibile.' });
+    try {
+      parsedData = JSON.parse(cleanedJson);
+    } catch (e) {
+      return res.status(200).json({
+        error: 'La risposta dell’IA non era in un formato leggibile. Riprova con un PDF più leggibile oppure con foto/screenshot delle pagine.'
+      });
     }
 
     return res.status(200).json({ success: true, data: parsedData });
   } catch (error) {
     console.error('Errore lettura listino:', error);
-    return res.status(500).json({ error: 'Errore durante l\'elaborazione del file.' });
+    return res.status(500).json({ error: 'Errore durante l’elaborazione del file.' });
   }
 };
