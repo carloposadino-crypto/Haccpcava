@@ -20,7 +20,7 @@ module.exports = async (req, res) => {
       try { body = JSON.parse(body); } catch (e) {}
     }
 
-    const { url, image } = body;
+    const { url, image, file, mimeType } = body;
     let pageText = "";
 
     if (url) {
@@ -80,18 +80,35 @@ Restituisci ESCLUSIVAMENTE un JSON valido (senza formattazione markdown \`\`\`js
 
     const parts = [{ text: promptText }];
 
-    if (image) {
-      if (typeof image !== 'string' || !image.startsWith('data:image/')) {
-        return res.status(400).json({ error: "L'immagine non è in un formato valido." });
+    const documento = file || image;
+    if (documento) {
+      if (typeof documento !== 'string' || !documento.startsWith('data:')) {
+        return res.status(400).json({ error: "Il file non è in un formato valido." });
       }
-      const base64Data = image.split(',')[1] || '';
-      const mimeType = image.split(';')[0].split(':')[1] || 'image/jpeg';
+
+      const base64Data = documento.split(',')[1] || '';
+      const tipoDocumento = mimeType || documento.split(';')[0].split(':')[1] || 'image/jpeg';
+      const tipiConsentiti = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+
+      if (!tipiConsentiti.includes(tipoDocumento)) {
+        return res.status(400).json({ error: "Formato non supportato. Usa PDF, JPG, PNG o WEBP." });
+      }
+
       if (!base64Data) {
-        return res.status(400).json({ error: "L'immagine è vuota o non leggibile." });
+        return res.status(400).json({ error: "Il file è vuoto o non leggibile." });
       }
+
+      // Evita richieste enormi che possono essere rifiutate dalla funzione serverless.
+      const byteStimati = Math.floor(base64Data.length * 0.75);
+      if (tipoDocumento === 'application/pdf' && byteStimati > 3300000) {
+        return res.status(400).json({
+          error: "Il PDF è troppo grande per l'importazione automatica (oltre circa 3,3 MB). Usa un PDF più leggero oppure uno screenshot."
+        });
+      }
+
       parts.push({
         inline_data: {
-          mime_type: mimeType,
+          mime_type: tipoDocumento,
           data: base64Data
         }
       });
