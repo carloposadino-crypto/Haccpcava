@@ -23,13 +23,11 @@ service cloud.firestore {
       return autenticato() && ruolo() == 'responsabile';
     }
 
-    // ---- profili ----
     match /profili/{uid} {
       allow read: if autenticato() && (request.auth.uid == uid || eResponsabile());
-      allow write: if false; // i profili si creano solo a mano dalla console, vedi README
+      allow write: if false;
     }
 
-    // ---- configurazione: lettura libera, scrittura riservata al responsabile ----
     match /attrezzature/{id} {
       allow read: if autenticato();
       allow write: if eResponsabile();
@@ -43,11 +41,10 @@ service cloud.firestore {
       allow write: if eResponsabile();
     }
 
-    // ---- registrazioni operative: lettura e scrittura per chi è autenticato ----
     match /rilevazioni_temperatura/{id} {
       allow read: if autenticato();
       allow create: if autenticato() && request.resource.data.registrato_da == request.auth.uid;
-      allow update, delete: if false; // le registrazioni HACCP non si modificano né si cancellano
+      allow update, delete: if false;
     }
     match /registrazioni_processo/{id} {
       allow read: if autenticato();
@@ -62,10 +59,15 @@ service cloud.firestore {
     match /non_conformita/{id} {
       allow read: if autenticato();
       allow create: if autenticato() && request.resource.data.aperto_da == request.auth.uid;
-      allow update: if autenticato(); // per poterle chiudere/aggiornare con esito e verifica
+      allow update: if autenticato();
       allow delete: if false;
     }
     match /conservazioni/{id} {
+      allow read: if autenticato();
+      allow create: if autenticato() && request.resource.data.registrato_da == request.auth.uid;
+      allow update, delete: if false;
+    }
+    match /servizi/{id} {
       allow read: if autenticato();
       allow create: if autenticato() && request.resource.data.registrato_da == request.auth.uid;
       allow update, delete: if false;
@@ -76,7 +78,6 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // ---- prodotti, fornitori, schede HACCP: lettura libera, scrittura per autenticati ----
     match /prodotti/{id} {
       allow read: if autenticato();
       allow write: if autenticato();
@@ -92,7 +93,6 @@ service cloud.firestore {
     match /schede_haccp/{id} {
       allow read: if autenticato();
       allow create: if autenticato();
-      // l'approvazione (campo stato = 'approvata') resta riservata al responsabile
       allow update: if autenticato() && (
         request.resource.data.stato != 'approvata' || eResponsabile()
       );
