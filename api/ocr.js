@@ -1,5 +1,5 @@
 // Legge una foto di un documento di trasporto (DDT/bolla) e restituisce
-// fornitore, numero documento, data e l'elenco dei prodotti riconosciuti,
+// fornitore, numero documento, data e l'elenco completo dei prodotti riconosciuti,
 // usando Gemini Vision.
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -14,15 +14,11 @@ module.exports = async function handler(req, res) {
     }
 
     const { imageBase64 } = body;
-
     if (!imageBase64) {
       return res.status(400).json({ error: 'Nessuna immagine fornita.' });
     }
 
-    const cleanBase64 = imageBase64.includes(',')
-      ? imageBase64.split(',')[1]
-      : imageBase64;
-
+    const cleanBase64 = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64;
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
@@ -34,24 +30,41 @@ module.exports = async function handler(req, res) {
     const mimeMatch = imageBase64.match(/^data:([^;]+);base64,/i);
     const mimeType = mimeMatch?.[1] || 'image/jpeg';
 
-    const prompt = 'Analizza questa bolla di accompagnamento / DDT / fattura di consegna per un ristorante. '
-      + 'Leggi con attenzione anche testo piccolo, quantità, unità di misura e numeri di lotto. '
-      + 'Non inventare dati: se un dato non è leggibile o non è presente usa null. '
-      + 'Restituisci ESCLUSIVAMENTE un oggetto JSON valido, senza markdown né altro testo, con questo formato esatto:\n'
-      + '{\n'
-      + '  "fornitore": "Nome Fornitore",\n'
-      + '  "numeroDocumento": "Numero DDT/Bolla",\n'
-      + '  "dataDocumento": "YYYY-MM-DD",\n'
-      + '  "prodotti": [\n'
-      + '    { "nome": "Nome Prodotto", "quantita": "Quantità con unità", "lotto": "Numero lotto se presente" }\n'
-      + '  ]\n'
-      + '}';
+    const prompt = `Analizza questa bolla di accompagnamento / DDT / documento di consegna per un ristorante.
 
-    const modelli = [
-      'gemini-flash-latest',
-      'gemini-3.5-flash-lite',
-    ];
+OBIETTIVO PRINCIPALE: TRASCRIVERE LE RIGHE DEI PRODOTTI IN MODO COMPLETO E FEDELE AL DOCUMENTO.
 
+Per ogni riga prodotto:
+- trascrivi il nome e la descrizione COMPLETI così come compaiono nel documento;
+- NON abbreviare mai il nome;
+- NON sostituire una descrizione con un nome generico o con una tua interpretazione;
+- mantieni marca, specie, taglio, formato, pezzatura, qualità, origine, codice articolo o altre informazioni descrittive quando sono presenti nella riga;
+- se il documento usa abbreviazioni, prova a leggerle e trascriverle esattamente, ma NON inventare l'espansione dell'abbreviazione;
+- conserva quantità e unità di misura esattamente come riportate;
+- conserva il numero di lotto esattamente come riportato;
+- includi TUTTE le righe prodotto leggibili, anche se la descrizione è ripetitiva;
+- non unire prodotti diversi;
+- non eliminare una riga perché sembra poco importante;
+- se una parte della descrizione è illeggibile, mantieni la parte leggibile e usa null solo per il campo che non può essere letto;
+- NON inventare dati mancanti.
+
+Leggi con attenzione anche testo piccolo e le colonne della tabella. Prima di restituire il risultato controlla di non aver abbreviato o semplificato i nomi dei prodotti.
+
+Restituisci ESCLUSIVAMENTE un oggetto JSON valido, senza markdown e senza commenti, con questo formato:
+{
+  "fornitore": "Nome completo del fornitore",
+  "numeroDocumento": "Numero DDT/Bolla",
+  "dataDocumento": "YYYY-MM-DD",
+  "prodotti": [
+    {
+      "nome": "Descrizione COMPLETA della riga così come appare sul documento",
+      "quantita": "Quantità e unità esattamente come riportate",
+      "lotto": "Numero lotto esattamente come riportato oppure null"
+    }
+  ]
+}`;
+
+    const modelli = ['gemini-flash-latest', 'gemini-3.5-flash-lite'];
     let geminiData = null;
     let lastStatus = 503;
     let lastError = 'Servizio Gemini temporaneamente non disponibile.';
@@ -88,11 +101,7 @@ module.exports = async function handler(req, res) {
             break;
           }
 
-          // 503 = sovraccarico temporaneo; 429 = limite/quota temporaneo.
-          // In entrambi i casi attendiamo e riproviamo automaticamente.
-          if (response.status !== 503 && response.status !== 429) {
-            break;
-          }
+          if (response.status !== 503 && response.status !== 429) break;
 
           if (tentativo < 2) {
             const attesa = 1200 * Math.pow(2, tentativo);
@@ -106,7 +115,6 @@ module.exports = async function handler(req, res) {
           }
         }
       }
-
       if (geminiData) break;
     }
 
@@ -117,10 +125,7 @@ module.exports = async function handler(req, res) {
     }
 
     const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const cleanedJson = rawText
-      .replace(/```json/gi, '')
-      .replace(/```/g, '')
-      .trim();
+    const cleanedJson = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
 
     let parsedData;
     try {
