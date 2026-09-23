@@ -25,6 +25,13 @@ module.exports = async (req, res) => {
 
     if (url) {
       try {
+        let parsedUrl;
+        try {
+          parsedUrl = new URL(url);
+          if (!['http:', 'https:'].includes(parsedUrl.protocol)) throw new Error('Protocollo non valido');
+        } catch (e) {
+          return res.status(400).json({ error: "Il link non è valido. Usa un URL che inizi con http:// o https://." });
+        }
         const fetchRes = await fetch(url, {
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -66,14 +73,22 @@ Restituisci ESCLUSIVAMENTE un JSON valido (senza formattazione markdown \`\`\`js
     if (pageText) {
       promptText += `\n\nEcco il testo estratto dalla pagina web della ricetta:\n${pageText}`;
     } else if (url) {
-      promptText += `\n\nAnalizza questa ricetta dal link: ${url}`;
+      return res.status(200).json({
+        error: "Non riesco a leggere il contenuto di questo sito dal link. Prova con uno screenshot della ricetta oppure incolla qui il testo della ricetta."
+      });
     }
 
     const parts = [{ text: promptText }];
 
     if (image) {
-      const base64Data = image.includes(',') ? image.split(',')[1] : image;
+      if (typeof image !== 'string' || !image.startsWith('data:image/')) {
+        return res.status(400).json({ error: "L'immagine non è in un formato valido." });
+      }
+      const base64Data = image.split(',')[1] || '';
       const mimeType = image.split(';')[0].split(':')[1] || 'image/jpeg';
+      if (!base64Data) {
+        return res.status(400).json({ error: "L'immagine è vuota o non leggibile." });
+      }
       parts.push({
         inline_data: {
           mime_type: mimeType,
