@@ -53,6 +53,13 @@ tipicamente `temperatura_c` / `tempo_min`), `esito` ('ok' | 'fuori_limite' | nul
 `prodotto_nome`, `data`, `lotto`, `scadenza`, `temperatura`, `conformita`,
 `note`, `registrato_da`, `registrato_il`
 
+### `conservazioni`
+`processo_id`, `processo_tipo`, `processo_data`, `prodotto`, `lotto`,
+`ricevimento_collegato`, `tipo_conservazione`, `tipo_conservazione_label`,
+`apparecchiatura_id`, `apparecchiatura_nome`, `quantita`, `contenitore`,
+`data_produzione`, `scadenza`, `note`, `data_riferimento`, `registrato_da`,
+`registrato_il`
+
 ### `schede_haccp`
 `nome`, `codice`, `versione`, `stato` ('bozza' | 'da_revisionare' | 'approvata'),
 **`contenuto`** (mappa annidata: `ingredienti`, `processo`, `pericoli`,
