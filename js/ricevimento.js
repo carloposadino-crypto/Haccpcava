@@ -9,7 +9,13 @@ let righeCorrenti = [];
 let dataSelezionata = oggiISO();
 
 function rigaVuota() {
-  return { nome: '', quantita: '', lotto: '' };
+  return {
+    nome: '',
+    quantita: '',
+    lotto: '',
+    scadenza: '',
+    temperatura: ''
+  };
 }
 
 export async function renderRicezioniPage(container, profilo) {
@@ -41,39 +47,64 @@ export async function renderRicezioniPage(container, profilo) {
     <div class="list-card">
       <label class="field-label">Fornitore</label>
       <input type="text" id="rc-fornitore" placeholder="Nome fornitore">
+
       <div class="form-row">
-        <div><label class="field-label">N. documento</label><input type="text" id="rc-numero-doc"></div>
-        <div><label class="field-label">Temperatura arrivo (°C)</label><input type="number" step="0.1" id="rc-temperatura" placeholder="Se pertinente"></div>
+        <div>
+          <label class="field-label">N. documento</label>
+          <input type="text" id="rc-numero-doc">
+        </div>
+
+        <div>
+          <label class="field-label">Temperatura arrivo (°C)</label>
+          <input type="number" step="0.1" id="rc-temperatura" placeholder="Se pertinente">
+        </div>
       </div>
 
       <label class="field-label">Prodotti in questa consegna</label>
       <div id="rc-righe"></div>
-      <button type="button" class="btn btn-secondary" id="rc-add-riga" style="margin-bottom:14px;">+ Aggiungi prodotto</button>
+
+      <button type="button" class="btn btn-secondary" id="rc-add-riga" style="margin-bottom:14px;">
+        + Aggiungi prodotto
+      </button>
 
       <label class="field-label">Conformità</label>
       <select id="rc-conformita">
         <option value="conforme">Conforme</option>
         <option value="non_conforme">Non conforme</option>
       </select>
+
       <label class="field-label">Note</label>
       <textarea id="rc-note"></textarea>
-      <button class="btn btn-primary btn-block" id="rc-salva">Registra ricevimento</button>
+
+      <button class="btn btn-primary btn-block" id="rc-salva">
+        Registra ricevimento
+      </button>
     </div>
 
-    <h3 style="font-size:14px; color:#64748b; margin: 16px 0 8px;">Registrati il ${dataSelezionata} (${listaGiorno.length})</h3>
-    ${listaGiorno.length === 0 ? '<div class="empty-state">Nessun ricevimento registrato in questa data.</div>' : `
-      <div class="list-card">
-        ${listaGiorno.map((r) => `
-          <div class="check-row" style="cursor:default;">
-            <span class="dot ${r.conformita === 'non_conforme' ? 'warn' : 'ok'}"></span>
-            <div class="rt">
-              <div class="t">${r.fornitore_nome}${r.numero_documento ? ' — ' + r.numero_documento : ''}</div>
-              <div class="s">${(r.voci || []).map((v) => v.nome).join(', ') || '—'}</div>
+    <h3 style="font-size:14px; color:#64748b; margin:16px 0 8px;">
+      Registrati il ${dataSelezionata} (${listaGiorno.length})
+    </h3>
+
+    ${listaGiorno.length === 0
+      ? '<div class="empty-state">Nessun ricevimento registrato in questa data.</div>'
+      : `
+        <div class="list-card">
+          ${listaGiorno.map((r) => `
+            <div class="check-row" style="cursor:default;">
+              <span class="dot ${r.conformita === 'non_conforme' ? 'warn' : 'ok'}"></span>
+              <div class="rt">
+                <div class="t">
+                  ${r.fornitore_nome}${r.numero_documento ? ' — ' + r.numero_documento : ''}
+                </div>
+                <div class="s">
+                  ${(r.voci || []).map((v) => v.nome).join(', ') || '—'}
+                </div>
+              </div>
             </div>
-          </div>
-        `).join('')}
-      </div>
-    `}
+          `).join('')}
+        </div>
+      `
+    }
   `;
 
   container.querySelector('#rc-data').addEventListener('change', (e) => {
@@ -83,85 +114,243 @@ export async function renderRicezioniPage(container, profilo) {
 
   function disegnaRighe() {
     const wrap = container.querySelector('#rc-righe');
+
     wrap.innerHTML = righeCorrenti.map((riga, i) => `
-      <div class="form-row" data-riga="${i}">
-        <input type="text" placeholder="Prodotto" data-campo="nome" value="${riga.nome}">
-        <input type="text" placeholder="Quantità" data-campo="quantita" value="${riga.quantita}" style="flex:0 0 90px;">
-        <input type="text" placeholder="Lotto" data-campo="lotto" value="${riga.lotto}" style="flex:0 0 90px;">
-        ${righeCorrenti.length > 1 ? `<button type="button" class="btn btn-danger rc-rimuovi" style="flex:0 0 auto; padding:8px 10px;">✕</button>` : ''}
+      <div
+        class="form-row"
+        data-riga="${i}"
+        style="align-items:flex-end; margin-bottom:10px;"
+      >
+
+        <div style="flex:1;">
+          <label class="field-label">Prodotto</label>
+          <input
+            type="text"
+            placeholder="Prodotto"
+            data-campo="nome"
+            value="${riga.nome}"
+          >
+        </div>
+
+        <div style="flex:0 0 90px;">
+          <label class="field-label">Quantità</label>
+          <input
+            type="text"
+            placeholder="Quantità"
+            data-campo="quantita"
+            value="${riga.quantita}"
+          >
+        </div>
+
+        <div style="flex:0 0 100px;">
+          <label class="field-label">Lotto</label>
+          <input
+            type="text"
+            placeholder="Lotto"
+            data-campo="lotto"
+            value="${riga.lotto}"
+          >
+        </div>
+
+        <div style="flex:0 0 120px;">
+          <label class="field-label">Scadenza / TMC</label>
+          <input
+            type="text"
+            placeholder="gg/mm/aaaa"
+            data-campo="scadenza"
+            value="${riga.scadenza}"
+          >
+        </div>
+
+        <div style="flex:0 0 110px;">
+          <label class="field-label">Temp. °C</label>
+          <input
+            type="number"
+            step="0.1"
+            placeholder="°C"
+            data-campo="temperatura"
+            value="${riga.temperatura}"
+          >
+        </div>
+
+        ${righeCorrenti.length > 1
+          ? `
+            <button
+              type="button"
+              class="btn btn-danger rc-rimuovi"
+              style="flex:0 0 auto; padding:8px 10px;"
+            >
+              ✕
+            </button>
+          `
+          : ''
+        }
+
       </div>
     `).join('');
 
     wrap.querySelectorAll('[data-riga]').forEach((rigaEl) => {
       const i = +rigaEl.dataset.riga;
+
       rigaEl.querySelectorAll('[data-campo]').forEach((input) => {
-        input.addEventListener('input', () => { righeCorrenti[i][input.dataset.campo] = input.value; });
+        input.addEventListener('input', () => {
+          righeCorrenti[i][input.dataset.campo] = input.value;
+        });
       });
+
       const btnRimuovi = rigaEl.querySelector('.rc-rimuovi');
-      if (btnRimuovi) btnRimuovi.addEventListener('click', () => { righeCorrenti.splice(i, 1); disegnaRighe(); });
+
+      if (btnRimuovi) {
+        btnRimuovi.addEventListener('click', () => {
+          righeCorrenti.splice(i, 1);
+          disegnaRighe();
+        });
+      }
     });
   }
+
   disegnaRighe();
 
-  container.querySelector('#rc-add-riga').addEventListener('click', () => { righeCorrenti.push(rigaVuota()); disegnaRighe(); });
+  container.querySelector('#rc-add-riga').addEventListener('click', () => {
+    righeCorrenti.push(rigaVuota());
+    disegnaRighe();
+  });
 
   const statusBox = container.querySelector('#rc-import-status');
-  const mostraStato = (msg) => { statusBox.style.display = 'block'; statusBox.textContent = msg; };
-  const nascondiStato = () => { statusBox.style.display = 'none'; };
 
-  container.querySelector('#rc-btn-foto').addEventListener('click', () => container.querySelector('#rc-file-input').click());
+  const mostraStato = (msg) => {
+    statusBox.style.display = 'block';
+    statusBox.textContent = msg;
+  };
+
+  const nascondiStato = () => {
+    statusBox.style.display = 'none';
+  };
+
+  container.querySelector('#rc-btn-foto').addEventListener('click', () => {
+    container.querySelector('#rc-file-input').click();
+  });
+
   container.querySelector('#rc-file-input').addEventListener('change', (e) => {
     const file = e.target.files[0];
+
     if (!file) return;
+
     mostraStato('📷 Lettura della bolla in corso…');
+
     const reader = new FileReader();
+
     reader.onload = async () => {
       try {
-        const resp = await fetch('/api/ocr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageBase64: reader.result }) });
+        const resp = await fetch('/api/ocr', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            imageBase64: reader.result
+          })
+        });
+
         const result = await resp.json();
-        if (result.error) { alert(result.error); nascondiStato(); return; }
+
+        if (result.error) {
+          alert(result.error);
+          nascondiStato();
+          return;
+        }
 
         const data = result.data || {};
-        if (data.fornitore) container.querySelector('#rc-fornitore').value = data.fornitore;
-        if (data.numeroDocumento) container.querySelector('#rc-numero-doc').value = data.numeroDocumento;
+
+        if (data.fornitore) {
+          container.querySelector('#rc-fornitore').value = data.fornitore;
+        }
+
+        if (data.numeroDocumento) {
+          container.querySelector('#rc-numero-doc').value = data.numeroDocumento;
+        }
+
         if (Array.isArray(data.prodotti) && data.prodotti.length) {
-          righeCorrenti = data.prodotti.map((p) => ({ nome: p.nome || '', quantita: p.quantita || '', lotto: p.lotto || '' }));
+          righeCorrenti = data.prodotti.map((p) => ({
+            nome: p.nome || '',
+            quantita: p.quantita || '',
+            lotto: p.lotto || '',
+            scadenza: p.scadenza || p.tmc || '',
+            temperatura: p.temperatura || ''
+          }));
+
           disegnaRighe();
         }
-        if (result.isDemo) mostraStato('⚠️ Modalità demo: attiva GEMINI_API_KEY su Vercel per la lettura reale.');
-        else nascondiStato();
+
+        if (result.isDemo) {
+          mostraStato(
+            '⚠️ Modalità demo: attiva GEMINI_API_KEY su Vercel per la lettura reale.'
+          );
+        } else {
+          nascondiStato();
+        }
+
       } catch (err) {
         console.error(err);
         alert('Errore durante la lettura della foto.');
         nascondiStato();
       }
     };
+
     reader.readAsDataURL(file);
   });
 
   container.querySelector('#rc-salva').addEventListener('click', async (e) => {
-    const fornitore = container.querySelector('#rc-fornitore').value.trim();
-    const voci = righeCorrenti.filter((r) => r.nome.trim());
-    if (!fornitore || voci.length === 0) { alert('Inserisci almeno il fornitore e un prodotto.'); return; }
+    const fornitore = container
+      .querySelector('#rc-fornitore')
+      .value
+      .trim();
+
+    const voci = righeCorrenti
+      .filter((r) => r.nome.trim())
+      .map((r) => ({
+        nome: r.nome.trim(),
+        quantita: r.quantita,
+        lotto: r.lotto,
+        scadenza: r.scadenza,
+        temperatura: r.temperatura
+      }));
+
+    if (!fornitore || voci.length === 0) {
+      alert('Inserisci almeno il fornitore e un prodotto.');
+      return;
+    }
 
     e.currentTarget.disabled = true;
+
     try {
-      const conformita = container.querySelector('#rc-conformita').value;
-      await aggiungi('ricevimenti', {
-        fornitore_nome: fornitore,
-        numero_documento: container.querySelector('#rc-numero-doc').value,
-        voci,
-        temperatura: container.querySelector('#rc-temperatura').value || null,
-        conformita,
-        note: container.querySelector('#rc-note').value,
-        data_riferimento: dataSelezionata,
-        registrato_da: profilo.id,
-      }, 'registrato_il');
+      const conformita = container
+        .querySelector('#rc-conformita')
+        .value;
+
+      await aggiungi(
+        'ricevimenti',
+        {
+          fornitore_nome: fornitore,
+          numero_documento: container.querySelector('#rc-numero-doc').value,
+          voci,
+          temperatura: container.querySelector('#rc-temperatura').value || null,
+          conformita,
+          note: container.querySelector('#rc-note').value,
+          data_riferimento: dataSelezionata,
+          registrato_da: profilo.id,
+        },
+        'registrato_il'
+      );
 
       if (conformita === 'non_conforme') {
-        alert('Ricevimento registrato come NON conforme. Valuta di segnalare un\'anomalia con il pulsante rosso in alto.');
+        alert(
+          'Ricevimento registrato come NON conforme. Valuta di segnalare un\'anomalia con il pulsante rosso in alto.'
+        );
       }
+
       renderRicezioniPage(container, profilo);
+
     } catch (err) {
       console.error(err);
       alert('Errore durante il salvataggio.');
