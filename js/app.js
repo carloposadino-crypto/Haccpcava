@@ -19,6 +19,7 @@ import { renderRicettePage } from './ricette.js';
 import { renderListinoPage } from './listino.js';
 import { renderEtichettePage } from './etichette.js';
 import { renderStoricoPage } from './storico.js';
+import { renderConservazionePage } from './conservazione.js';
 
 const NAV_PRINCIPALE = [
   ['oggi', '📅', 'Oggi'],
@@ -111,6 +112,7 @@ function renderContenuto() {
     case 'anomalie': renderAnomaliePage(container, profiloCorrente); break;
     case 'prodotti': renderProdottiPage(container); break;
     case 'ricevimento': renderRicezioniPage(container, profiloCorrente); break;
+    case 'conservazione': renderConservazionePage(container, profiloCorrente); break;
     case 'schede': renderRicettePage(container, profiloCorrente); break;
     case 'listino': renderListinoPage(container); break;
     case 'etichette': renderEtichettePage(container); break;
