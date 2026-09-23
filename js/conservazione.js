@@ -49,11 +49,26 @@ function dataBreve(value) {
 export async function renderConservazionePage(container, profilo) {
   container.innerHTML = '<div class="empty-state">Caricamento…</div>';
 
-  const [processi, apparecchiature, conservazioni] = await Promise.all([
-    leggiTutti('registrazioni_processo').catch(() => []),
-    leggiTutti('attrezzature').catch(() => []),
-    leggiTutti('conservazioni', [where('data_riferimento', '==', dataSelezionata)]).catch(() => []),
-  ]);
+  let processi = [];
+  let apparecchiature = [];
+  let conservazioni = [];
+
+  try {
+    [processi, apparecchiature] = await Promise.all([
+      leggiTutti('registrazioni_processo'),
+      leggiTutti('attrezzature'),
+    ]);
+    conservazioni = await leggiTutti('conservazioni', [where('data_riferimento', '==', dataSelezionata)]);
+  } catch (err) {
+    console.error('Errore caricamento Conservazione:', err);
+    container.innerHTML = `
+      <div class="top-bar"><h2>Conservazione</h2></div>
+      <div class="empty-state">
+        Errore durante il caricamento della sezione Conservazione.<br>
+        <small>Controlla che le regole Firestore siano state pubblicate e riprova.</small>
+      </div>`;
+    return;
+  }
 
   const processiDisponibili = processi
     .filter((p) => !p.correzione_di)
