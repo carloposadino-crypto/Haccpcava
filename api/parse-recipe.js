@@ -116,7 +116,7 @@ Restituisci ESCLUSIVAMENTE un JSON valido (senza formattazione markdown \`\`\`js
 
     // Gemini può restituire 503 temporanei quando il modello è sotto carico.
     // Proviamo prima il modello principale, poi un retry e infine Flash-Lite.
-    const modelli = ['gemini-flash-latest', 'gemini-flash-latest', 'gemini-2.5-flash-lite'];
+    const modelli = ['gemini-flash-latest', 'gemini-flash-latest', 'gemini-3.5-flash-lite'];
     let response = null;
     let data = null;
     let ultimoErrore = null;
