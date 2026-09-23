@@ -97,17 +97,43 @@ Restituisci ESCLUSIVAMENTE un JSON valido (senza formattazione markdown \`\`\`js
       });
     }
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts }] })
-    });
+    // Gemini può restituire 503 temporanei quando il modello è sotto carico.
+    // Proviamo prima il modello principale, poi un retry e infine Flash-Lite.
+    const modelli = ['gemini-flash-latest', 'gemini-flash-latest', 'gemini-2.5-flash-lite'];
+    let response = null;
+    let data = null;
+    let ultimoErrore = null;
 
-    const data = await response.json();
+    for (let i = 0; i < modelli.length; i++) {
+      const modello = modelli[i];
 
-    if (!response.ok) {
-      return res.status(200).json({ 
-        error: `Errore Gemini API (${response.status}): ${data.error?.message || 'Chiave non valida o quota superata'}` 
+      if (i > 0) {
+        await new Promise(resolve => setTimeout(resolve, 900));
+      }
+
+      try {
+        response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modello}:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts }] })
+        });
+
+        data = await response.json();
+
+        if (response.ok) break;
+
+        ultimoErrore = data.error?.message || `HTTP ${response.status}`;
+
+        // Fallback automatico solo per errori temporanei di disponibilità.
+        if (response.status !== 503 && response.status !== 429) break;
+      } catch (err) {
+        ultimoErrore = err.message;
+      }
+    }
+
+    if (!response || !response.ok) {
+      return res.status(200).json({
+        error: `Errore Gemini API (${response?.status || 500}): ${ultimoErrore || 'servizio non disponibile'}`
       });
     }
 
