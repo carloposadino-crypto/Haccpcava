@@ -65,6 +65,11 @@ service cloud.firestore {
       allow update: if autenticato(); // per poterle chiudere/aggiornare con esito e verifica
       allow delete: if false;
     }
+    match /conservazioni/{id} {
+      allow read: if autenticato();
+      allow create: if autenticato() && request.resource.data.registrato_da == request.auth.uid;
+      allow update, delete: if false;
+    }
     match /ricevimenti/{id} {
       allow read: if autenticato();
       allow create: if autenticato() && request.resource.data.registrato_da == request.auth.uid;
