@@ -58,8 +58,8 @@ export async function renderRicettePage(container, profilo) {
     <div class="list-card" style="border:1px dashed #2b5c3a;">
       <div style="font-size:13px; font-weight:bold; color:#2b5c3a; margin-bottom:6px;">✨ Importazione automatica</div>
       <div style="font-size:12px; color:#475569; margin-bottom:10px;">Carica una foto/screenshot della ricetta, oppure incolla un link. Poi controlli e correggi i grammi prima di salvare.</div>
-      <input type="file" id="sc-file-input" accept="image/*" style="display:none;">
-      <button type="button" class="btn btn-secondary btn-block" id="sc-btn-foto" style="margin-bottom:10px;">📷 Scegli foto / screenshot</button>
+      <input type="file" id="sc-file-input" accept="image/*,application/pdf" style="display:none;">
+      <button type="button" class="btn btn-secondary btn-block" id="sc-btn-foto" style="margin-bottom:10px;">📷 Foto / screenshot</button><button type="button" class="btn btn-secondary" id="sc-btn-pdf" style="margin-bottom:10px;">📄 PDF</button>
       <div class="form-row">
         <input type="url" id="sc-url-input" placeholder="https://sito-ricette.it/ricetta...">
         <button type="button" class="btn btn-secondary" id="sc-btn-url" style="flex:0 0 auto;">🔗 Importa</button>
@@ -215,21 +215,23 @@ export async function renderRicettePage(container, profilo) {
   });
 
   container.querySelector('#sc-btn-foto').addEventListener('click', () => container.querySelector('#sc-file-input').click());
+  container.querySelector('#sc-btn-pdf').addEventListener('click', () => container.querySelector('#sc-file-input').click());
   container.querySelector('#sc-file-input').addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    mostraStato('📷 Lettura dell\'immagine in corso…');
+    const ePdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    mostraStato(ePdf ? '📄 Lettura del PDF in corso…' : '📷 Lettura dell\'immagine in corso…');
     const reader = new FileReader();
     reader.onload = async () => {
       try {
-        const resp = await fetch('/api/parse-recipe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: reader.result }) });
+        const resp = await fetch('/api/parse-recipe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file: reader.result, mimeType: file.type || (ePdf ? 'application/pdf' : 'image/jpeg') }) });
         const data = await resp.json();
         if (data.error) { alert(data.error); nascondiStato(); return; }
         applicaRicetta(data);
         nascondiStato();
       } catch (err) {
         console.error(err);
-        alert('Errore durante la lettura dell\'immagine.');
+        alert('Errore durante la lettura del file.');
         nascondiStato();
       }
     };
