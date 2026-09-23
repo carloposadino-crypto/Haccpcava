@@ -19,11 +19,9 @@ export async function renderOggi(container, profilo, vaiA) {
   const apparecchiatureRilevate = new Set(rilevazioniConservazione.map((r) => r.apparecchiatura_id));
   const fuoriRange = rilevazioniConservazione.some((r) => r.esito === 'fuori_limite');
 
-  let processiOggi = 0;
-  for (const tipo of ['cbt', 'abbattimento', 'rigenerazione']) {
-    const r = await leggiTutti('registrazioni_processo', [where('tipo', '==', tipo), where('data_riferimento', '==', oggi)]);
-    processiOggi += r.length;
-  }
+  const processiOggi = (await leggiTutti('registrazioni_processo', [
+    where('data_riferimento', '==', oggi),
+  ])).length;
 
   const piano = await leggiTutti('piano_pulizie', [where('attivo', '==', true)]);
   const pianoGiornaliero = piano.filter((v) => v.frequenza === 'giornaliera');
