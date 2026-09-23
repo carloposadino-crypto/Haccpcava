@@ -13,7 +13,11 @@ export { where, orderBy };
 // Data di oggi in formato 'YYYY-MM-DD', per raggruppare/filtrare le
 // registrazioni giornaliere in modo leggibile.
 export function oggiISO() {
-  return new Date().toISOString().split('T')[0];
+  const oggi = new Date();
+  const anno = oggi.getFullYear();
+  const mese = String(oggi.getMonth() + 1).padStart(2, '0');
+  const giorno = String(oggi.getDate()).padStart(2, '0');
+  return `${anno}-${mese}-${giorno}`;
 }
 
 // Inizio (00:00:00.000) e fine (23:59:59.999) del giorno indicato,
