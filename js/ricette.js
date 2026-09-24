@@ -19,16 +19,48 @@ function rigaVuota() { return { nome: '', grammi: '' }; }
 // Cerca il prezzo al kg di un ingrediente nel listino: prima match
 // esatto, poi un match "contiene" in entrambe le direzioni. Se non
 // trova nulla, ritorna null (l'ingrediente resta fuori dal calcolo).
+function normalizzaNomeIngrediente(nome) {
+  return nome
+    .toLowerCase()
+    .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')
+    .replace(/\\b(igp|dop|doc|docg|bio|italiano|italiana|fresco|fresca|freschi|fresche|professionale|premium)\\b/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\\s+/g, ' ')
+    .trim();
+}
+
 function trovaPrezzoKg(nomeIngrediente) {
-  const cercato = nomeIngrediente.trim().toLowerCase();
+  const cercato = normalizzaNomeIngrediente(nomeIngrediente);
   if (!cercato) return null;
-  // Solo corrispondenza esatta: un abbinamento "approssimato" (es. "Olio"
-  // che aggancia "Olio di semi") potrebbe sembrare corretto ma non esserlo,
-  // e il costo mostrato sarebbe sbagliato senza che nessuno se ne accorga.
-  // Meglio segnalare "prezzo non trovato" e farlo aggiungere con lo stesso
-  // nome esatto nel Listino.
-  const voce = listinoCorrente.find((v) => v.nome.trim().toLowerCase() === cercato);
-  return voce ? voce.prezzo_kg : null;
+
+  // 1. Corrispondenza esatta dopo la normalizzazione.
+  let voce = listinoCorrente.find((v) => normalizzaNomeIngrediente(v.nome || '') === cercato);
+  if (voce) return voce.prezzo_kg;
+
+  // 2. Se un nome contiene l'altro, lo consideriamo valido solo quando
+  // il nome più corto contiene almeno 2 parole: evita casi pericolosi
+  // come "olio" -> "olio di semi".
+  const parole = cercato.split(' ');
+  if (parole.length >= 2) {
+    voce = listinoCorrente.find((v) => {
+      const n = normalizzaNomeIngrediente(v.nome || '');
+      return n.includes(cercato) || cercato.includes(n);
+    });
+    if (voce) return voce.prezzo_kg;
+  }
+
+  // 3. Confronto per parole significative: utile per differenze come
+  // "Parmigiano Reggiano" / "Parmigiano Reggiano DOP".
+  const paroleSignificative = parole.filter((p) => p.length >= 4);
+  if (paroleSignificative.length >= 2) {
+    voce = listinoCorrente.find((v) => {
+      const n = normalizzaNomeIngrediente(v.nome || '');
+      return paroleSignificative.every((p) => n.split(' ').includes(p));
+    });
+    if (voce) return voce.prezzo_kg;
+  }
+
+  return null;
 }
 
 // Converte il testo restituito dall'importazione IA (righe tipo
