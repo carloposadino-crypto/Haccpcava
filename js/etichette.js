@@ -45,7 +45,7 @@ export async function renderEtichettePage(container) {
         ${opzioni.map((o, i) => `<option value="${i}">${o.nome}${o.fonte === 'conservazione' ? ' — conservata' : o.fonte === 'processo' ? ' — processo' : ''}</option>`).join('')}
       </select>
       <label class="field-label">Nome etichetta</label>
-      <input type="text" id="et-nome" placeholder="Nome preparazione" readonly>
+      <input type="text" id="et-nome" placeholder="Scrivi il nome della preparazione">
       <div class="form-row">
         <div><label class="field-label">Lotto</label><input type="text" id="et-lotto" placeholder="Lotto"></div>
         <div><label class="field-label">Data produzione</label><input type="date" id="et-data-prod"></div>
@@ -55,7 +55,6 @@ export async function renderEtichettePage(container) {
         <div><label class="field-label">Conservazione</label><input type="text" id="et-conservazione" placeholder="es. ≤ +4 °C" readonly></div>
       </div>
       <div><label class="field-label">Tipo di conservazione</label><input type="text" id="et-tipo-conservazione" placeholder="es. Abbattimento → Frigorifero 0–4 °C" readonly></div>
-      </div>
       <button class="btn btn-primary btn-block" id="et-genera">Genera etichetta</button>
     </div>
 
@@ -75,7 +74,8 @@ export async function renderEtichettePage(container) {
     const scelta = idx !== '' ? opzioni[+idx] : null;
     const nomeInput = container.querySelector('#et-nome');
     nomeInput.value = scelta?.nome || '';
-    nomeInput.readOnly = idx !== '';
+    // Il nome resta sempre modificabile: la selezione serve solo a precompilare i dati.
+    nomeInput.readOnly = false;
     container.querySelector('#et-lotto').value = scelta?.lotto || '';
     container.querySelector('#et-data-prod').value = scelta?.dataProduzione || '';
     container.querySelector('#et-scadenza').value = scelta?.scadenza || '';
@@ -86,7 +86,7 @@ export async function renderEtichettePage(container) {
   container.querySelector('#et-genera').addEventListener('click', () => {
     const sceltaIdx = container.querySelector('#et-scelta').value;
     const nomeLibero = container.querySelector('#et-nome').value.trim();
-    const nome = sceltaIdx !== '' ? opzioni[+sceltaIdx].nome : nomeLibero;
+    const nome = nomeLibero;
     if (!nome) { alert('Scegli una preparazione o scrivi un nome.'); return; }
 
     const lotto = container.querySelector('#et-lotto').value.trim();
