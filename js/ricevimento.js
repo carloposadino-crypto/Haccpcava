@@ -18,6 +18,15 @@ function rigaVuota() {
   };
 }
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 export async function renderRicezioniPage(container, profilo) {
   container.innerHTML = `<div class="empty-state">Caricamento…</div>`;
 
@@ -90,14 +99,14 @@ export async function renderRicezioniPage(container, profilo) {
       : `
         <div class="list-card">
           ${listaGiorno.map((r) => `
-            <div class="check-row" style="cursor:default;">
+            <div class="check-row" style="cursor:default; align-items:flex-start;">
               <span class="dot ${r.conformita === 'non_conforme' ? 'warn' : 'ok'}"></span>
-              <div class="rt">
+              <div class="rt" style="min-width:0;">
                 <div class="t">
-                  ${r.fornitore_nome}${r.numero_documento ? ' — ' + r.numero_documento : ''}
+                  ${escapeHtml(r.fornitore_nome)}${r.numero_documento ? ' — ' + escapeHtml(r.numero_documento) : ''}
                 </div>
-                <div class="s">
-                  ${(r.voci || []).map((v) => v.nome).join(', ') || '—'}
+                <div class="s" style="white-space:normal; overflow-wrap:anywhere;">
+                  ${(r.voci || []).map((v) => escapeHtml(v.nome)).join(', ') || '—'}
                 </div>
               </div>
             </div>
@@ -117,59 +126,58 @@ export async function renderRicezioniPage(container, profilo) {
 
     wrap.innerHTML = righeCorrenti.map((riga, i) => `
       <div
-        class="form-row"
         data-riga="${i}"
-        style="align-items:flex-end; margin-bottom:10px;"
+        style="display:grid; grid-template-columns:minmax(280px,1fr) 110px 130px 130px 100px auto; gap:10px; align-items:end; margin-bottom:14px; padding:12px; border:1px solid #e2e8f0; border-radius:10px; background:#f8fafc;"
       >
 
-        <div style="flex:1;">
-          <label class="field-label">Prodotto</label>
-          <input
-            type="text"
-            placeholder="Prodotto"
+        <div style="min-width:0;">
+          <label class="field-label">Descrizione completa prodotto</label>
+          <textarea
+            rows="2"
+            placeholder="Descrizione completa del prodotto come da DDT"
             data-campo="nome"
-            value="${riga.nome}"
-          >
+            style="width:100%; min-height:58px; resize:vertical; box-sizing:border-box; white-space:pre-wrap; overflow-wrap:anywhere;"
+          >${escapeHtml(riga.nome)}</textarea>
         </div>
 
-        <div style="flex:0 0 90px;">
+        <div>
           <label class="field-label">Quantità</label>
           <input
             type="text"
             placeholder="Quantità"
             data-campo="quantita"
-            value="${riga.quantita}"
+            value="${escapeHtml(riga.quantita)}"
           >
         </div>
 
-        <div style="flex:0 0 100px;">
+        <div>
           <label class="field-label">Lotto</label>
           <input
             type="text"
             placeholder="Lotto"
             data-campo="lotto"
-            value="${riga.lotto}"
+            value="${escapeHtml(riga.lotto)}"
           >
         </div>
 
-        <div style="flex:0 0 120px;">
+        <div>
           <label class="field-label">Scadenza / TMC</label>
           <input
             type="text"
             placeholder="gg/mm/aaaa"
             data-campo="scadenza"
-            value="${riga.scadenza}"
+            value="${escapeHtml(riga.scadenza)}"
           >
         </div>
 
-        <div style="flex:0 0 110px;">
+        <div>
           <label class="field-label">Temp. °C</label>
           <input
             type="number"
             step="0.1"
             placeholder="°C"
             data-campo="temperatura"
-            value="${riga.temperatura}"
+            value="${escapeHtml(riga.temperatura)}"
           >
         </div>
 
@@ -178,7 +186,7 @@ export async function renderRicezioniPage(container, profilo) {
             <button
               type="button"
               class="btn btn-danger rc-rimuovi"
-              style="flex:0 0 auto; padding:8px 10px;"
+              style="padding:8px 10px;"
             >
               ✕
             </button>
@@ -272,7 +280,7 @@ export async function renderRicezioniPage(container, profilo) {
 
         if (Array.isArray(data.prodotti) && data.prodotti.length) {
           righeCorrenti = data.prodotti.map((p) => ({
-            nome: p.nome || '',
+            nome: p.nome || p.descrizione || '',
             quantita: p.quantita || '',
             lotto: p.lotto || '',
             scadenza: p.scadenza || p.tmc || '',
@@ -287,7 +295,7 @@ export async function renderRicezioniPage(container, profilo) {
             '⚠️ Modalità demo: attiva GEMINI_API_KEY su Vercel per la lettura reale.'
           );
         } else {
-          nascondiStato();
+          mostraStato('✓ Documento letto. Controlla le descrizioni complete prima di registrare il ricevimento.');
         }
 
       } catch (err) {
