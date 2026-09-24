@@ -6,13 +6,17 @@ import { leggiTutti, oggiISO } from './store.js';
 
 export async function renderEtichettePage(container) {
   container.innerHTML = `<div class="empty-state">Caricamento…</div>`;
-  const [prodotti, schede] = await Promise.all([
+  const [prodotti, schede, processi, conservazioni] = await Promise.all([
     leggiTutti('prodotti').catch(() => []),
     leggiTutti('schede_haccp').catch(() => []),
+    leggiTutti('registrazioni_processo').catch(() => []),
+    leggiTutti('conservazioni').catch(() => []),
   ]);
   const opzioni = [
     ...prodotti.map((p) => ({ nome: p.denominazione, conservazione: p.conservazione })),
     ...schede.map((s) => ({ nome: s.nome, conservazione: s.contenuto?.ccp || '' })),
+    ...processi.map((p) => ({ nome: p.prodotto, lotto: p.valori?.lotto_materia_prima || '', dataProduzione: p.data_riferimento || '', processo: p.tipo })),
+    ...conservazioni.map((c) => ({ nome: c.prodotto, lotto: c.lotto || '', dataProduzione: c.data_produzione || c.data_riferimento || '', scadenza: c.scadenza || '', conservazione: c.tipo_conservazione_label || c.tipo_conservazione, processo: c.processo_tipo || '' })),
   ];
 
   container.innerHTML = `
@@ -37,7 +41,9 @@ export async function renderEtichettePage(container) {
       <div style="font-size:11px; letter-spacing:1px; color:#64748b;">TENUTA AGRICOLA LA CAVA</div>
       <div id="et-out-nome" style="font-size:18px; font-weight:bold; margin:6px 0;"></div>
       <div id="et-out-lotto" style="font-size:13px;"></div>
+      <div id="et-out-prod" style="font-size:13px;"></div>
       <div id="et-out-scad" style="font-size:13px;"></div>
+      <div id="et-out-conservazione" style="font-size:13px;"></div>
     </div>
     <button class="btn btn-secondary btn-block no-print" id="et-stampa" style="display:none; margin-top:8px;">Stampa</button>
   `;
@@ -50,10 +56,13 @@ export async function renderEtichettePage(container) {
 
     const lotto = container.querySelector('#et-lotto').value;
     const scadenza = container.querySelector('#et-scadenza').value;
+    const scelta = sceltaIdx !== '' ? opzioni[+sceltaIdx] : null;
 
     container.querySelector('#et-out-nome').textContent = nome;
-    container.querySelector('#et-out-lotto').textContent = `Lotto/data: ${lotto}`;
-    container.querySelector('#et-out-scad').textContent = scadenza ? `Da consumarsi entro: ${scadenza}` : '';
+    container.querySelector('#et-out-lotto').textContent = lotto ? `Lotto: ${lotto}` : 'Lotto: —';
+    container.querySelector('#et-out-prod').textContent = scelta?.dataProduzione ? `Prodotto il: ${scelta.dataProduzione}` : '';
+    container.querySelector('#et-out-scad').textContent = scadenza ? `Da consumarsi entro: ${scadenza}` : (scelta?.scadenza ? `Da consumarsi entro: ${scelta.scadenza}` : '');
+    container.querySelector('#et-out-conservazione').textContent = scelta?.conservazione ? `Conservazione: ${scelta.conservazione}` : '';
     container.querySelector('#printable-label-card').style.display = 'block';
     container.querySelector('#et-stampa').style.display = 'block';
   });
