@@ -3,18 +3,20 @@
   "name": "HACCP La Cava dei Vini",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/3075/3075977.png",
-      "type": "image/png",
-      "sizes": "192x192"
+      "src": "./icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192",
+      "purpose": "any maskable"
     },
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/3075/3075977.png",
-      "type": "image/png",
-      "sizes": "512x512"
+      "src": "./icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512",
+      "purpose": "any maskable"
     }
   ],
   "start_url": "./index.html",
-  "background_color": "#121212",
+  "background_color": "#000000",
   "theme_color": "#2b5c3a",
   "display": "standalone",
   "orientation": "portrait"
