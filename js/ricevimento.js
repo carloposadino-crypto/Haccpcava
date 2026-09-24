@@ -101,6 +101,7 @@ export async function renderRicezioniPage(container, profilo) {
       <input type="text" id="rc-fornitore" placeholder="Nome fornitore">
       <div class="form-row">
         <div><label class="field-label">N. documento</label><input type="text" id="rc-numero-doc"></div>
+        <div><label class="field-label">Data DDT</label><input type="date" id="rc-data-documento" value="${oggiISO()}"></div>
         <div><label class="field-label">Temperatura arrivo (°C)</label><input type="number" step="0.1" id="rc-temperatura" placeholder="Se pertinente"></div>
       </div>
       <label class="field-label">Prodotti in questa consegna</label>
@@ -136,7 +137,19 @@ export async function renderRicezioniPage(container, profilo) {
     renderRicezioniPage(container, profilo);
   });
 
-  container.querySelectorAll('.rc-modifica-data-ddt').forEach((btn) => {\n    btn.addEventListener('click', async () => {\n      const r = listaGiorno.find((item) => item.id === btn.dataset.id);\n      if (!r) return;\n      const nuovaData = window.prompt('Inserisci la data del DDT nel formato AAAA-MM-GG:', r.data_documento || r.data_riferimento || oggiISO());\n      if (nuovaData === null) return;\n      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(nuovaData)) { alert('Data non valida. Usa il formato AAAA-MM-GG.'); return; }\n      try { await aggiorna('ricevimenti', r.id, { data_documento: nuovaData }); renderRicezioniPage(container, profilo); }\n      catch (err) { console.error(err); alert('Errore durante la modifica della data DDT.'); }\n    });\n  });\n\n  container.querySelectorAll('.rc-apri').forEach((btn) => {
+  container.querySelectorAll('.rc-modifica-data-ddt').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const r = listaGiorno.find((item) => item.id === btn.dataset.id);
+      if (!r) return;
+      const nuovaData = window.prompt('Inserisci la data del DDT nel formato AAAA-MM-GG:', r.data_documento || r.data_riferimento || oggiISO());
+      if (nuovaData === null) return;
+      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(nuovaData)) { alert('Data non valida. Usa il formato AAAA-MM-GG.'); return; }
+      try { await aggiorna('ricevimenti', r.id, { data_documento: nuovaData }); renderRicezioniPage(container, profilo); }
+      catch (err) { console.error(err); alert('Errore durante la modifica della data DDT.'); }
+    });
+  });
+
+  container.querySelectorAll('.rc-apri').forEach((btn) => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.id;
       ricevimentoAperto = ricevimentoAperto === id ? null : id;
@@ -187,7 +200,8 @@ export async function renderRicezioniPage(container, profilo) {
           if (result.error) { alert(result.error); nascondiStato(); return; }
           const data = result.data || {};
           if (data.fornitore) container.querySelector('#rc-fornitore').value = data.fornitore;
-          if (data.numeroDocumento) container.querySelector('#rc-numero-doc').value = data.numeroDocumento;\n          if (data.dataDocumento && /^\\d{4}-\\d{2}-\\d{2}$/.test(data.dataDocumento)) container.querySelector('#rc-data-documento').value = data.dataDocumento;
+          if (data.numeroDocumento) container.querySelector('#rc-numero-doc').value = data.numeroDocumento;
+          if (data.dataDocumento && /^\\d{4}-\\d{2}-\\d{2}$/.test(data.dataDocumento)) container.querySelector('#rc-data-documento').value = data.dataDocumento;
           if (Array.isArray(data.prodotti) && data.prodotti.length) {
             righeCorrenti = data.prodotti.map((p) => ({ nome: p.nome || p.descrizione || '', quantita: p.quantita || '', lotto: p.lotto || '', scadenza: p.scadenza || p.tmc || '', temperatura: p.temperatura || '', prezzo_unitario: p.prezzo_unitario ?? '', unita_prezzo: p.unita_prezzo || '', totale_riga: p.totale_riga ?? '' }));
             disegnaRighe();
@@ -209,7 +223,8 @@ export async function renderRicezioniPage(container, profilo) {
       const conformita = container.querySelector('#rc-conformita').value;
       await aggiungi('ricevimenti', {
         fornitore_nome: fornitore,
-        numero_documento: container.querySelector('#rc-numero-doc').value,\n        data_documento: container.querySelector('#rc-data-documento').value || null,
+        numero_documento: container.querySelector('#rc-numero-doc').value,
+        data_documento: container.querySelector('#rc-data-documento').value || null,
         voci,
         temperatura: container.querySelector('#rc-temperatura').value || null,
         conformita,
