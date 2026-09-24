@@ -40,13 +40,17 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const prompt = 'Analizza questo listino prezzi di un fornitore per un ristorante. '
-      + 'Per ogni riga/prodotto, individua il nome dell’ingrediente e il prezzo. '
-      + 'Metti un valore in prezzo_kg SOLO se il documento indica realmente un prezzo per kg. '
-      + 'Se il prezzo è per litro, pezzo, confezione o altra unità, usa prezzo_kg: null e indica l’unità in unita_originale. '
-      + 'Non inventare conversioni. '
+    const prompt = 'Analizza attentamente TUTTE le pagine di questo listino prezzi di un fornitore per un ristorante. '
+      + 'Il compito principale è leggere correttamente la colonna del PREZZO associata a ogni prodotto. '
+      + 'I prezzi possono essere scritti con virgola decimale (es. 12,50), punto decimale, simbolo €, oppure senza simbolo. '
+      + 'Non confondere codice articolo, quantità, peso della confezione, percentuali o numeri di pagina con il prezzo. '
+      + 'Per ogni riga individua il nome del prodotto e il prezzo effettivamente riportato nella colonna prezzo. '
+      + 'Se il prezzo è espresso in €/kg, riportalo in prezzo_kg come numero. '
+      + 'Se il prezzo è espresso per confezione ma nel documento è indicato anche il peso netto della confezione, calcola prezzo_kg = prezzo confezione / peso in kg e indica in unita_originale come è stato calcolato. '
+      + 'Se il prezzo è per pezzo, litro o altra unità e non esiste un peso che permetta una conversione certa in kg, usa prezzo_kg: null e riporta l’unita_originale. '
+      + 'Non inventare dati e non saltare una riga solo perché il prezzo usa la virgola decimale. '
       + 'Restituisci ESCLUSIVAMENTE JSON valido, senza markdown, nel formato: '
-      + '{ "fornitore": "Nome o stringa vuota", "voci": [{ "nome": "Nome Ingrediente", "prezzo_kg": 12.50, "unita_originale": "kg" }] }';
+      + '{ "fornitore": "Nome o stringa vuota", "voci": [{ "nome": "Nome Ingrediente", "prezzo_kg": 12.50, "unita_originale": "€/kg" }] }';
 
     // Usa modelli stabili e multimodali. Il PDF è supportato da Gemini Flash.
     // In caso di sovraccarico o rate limit, prova automaticamente il modello successivo.
@@ -70,6 +74,9 @@ module.exports = async function handler(req, res) {
               { text: prompt },
               { inline_data: { mime_type: tipo, data: cleanBase64 } },
             ] }],
+            generationConfig: {
+              responseMimeType: 'application/json',
+            },
           }),
         });
 
