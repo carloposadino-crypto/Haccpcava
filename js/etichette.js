@@ -12,25 +12,54 @@ export async function renderEtichettePage(container) {
     leggiTutti('registrazioni_processo').catch(() => []),
     leggiTutti('conservazioni').catch(() => []),
   ]);
+  function normalizzaData(value) {
+    if (!value) return '';
+    if (typeof value === 'string') {
+      const m = value.match(/(\\d{4})-(\\d{2})-(\\d{2})/);
+      return m ? m[0] : '';
+    }
+    if (value?.toDate) {
+      const d = value.toDate();
+      return d.toISOString().slice(0, 10);
+    }
+    return '';
+  }
+
+  // Collega ogni processo alla relativa registrazione di conservazione.
+  // In questo modo, scegliendo il processo oppure la conservazione,
+  // l'etichetta recupera gli stessi dati.
+  const conservazioneByProcesso = new Map(
+    conservazioni
+      .filter((c) => c.processo_id)
+      .map((c) => [c.processo_id, c])
+  );
+
   const opzioni = [
     ...conservazioni.map((c) => ({
       nome: c.prodotto || 'Preparazione',
       lotto: c.lotto || '',
-      dataProduzione: c.data_produzione || c.data_riferimento || '',
-      scadenza: c.scadenza || '',
+      dataProduzione: normalizzaData(c.data_produzione || c.data_riferimento),
+      scadenza: normalizzaData(c.scadenza),
       conservazione: c.tipo_conservazione_label || c.tipo_conservazione || '',
-      tipoConservazione: c.processo_tipo ? (c.processo_tipo + ' → ' + (c.tipo_conservazione_label || c.tipo_conservazione || '')) : (c.tipo_conservazione_label || c.tipo_conservazione || ''),
+      tipoConservazione: c.processo_tipo
+        ? (c.processo_tipo + ' → ' + (c.tipo_conservazione_label || c.tipo_conservazione || ''))
+        : (c.tipo_conservazione_label || c.tipo_conservazione || ''),
       fonte: 'conservazione'
     })),
-    ...processi.map((p) => ({
-      nome: p.prodotto || 'Preparazione',
-      lotto: p.valori?.lotto_materia_prima || '',
-      dataProduzione: p.data_riferimento || '',
-      scadenza: '',
-      conservazione: '',
-      tipoConservazione: p.tipo || '',
-      fonte: 'processo'
-    })),
+    ...processi.map((p) => {
+      const c = conservazioneByProcesso.get(p.id);
+      return {
+        nome: p.prodotto || 'Preparazione',
+        lotto: c?.lotto || p.valori?.lotto_materia_prima || '',
+        dataProduzione: normalizzaData(c?.data_produzione || p.data_riferimento),
+        scadenza: normalizzaData(c?.scadenza),
+        conservazione: c?.tipo_conservazione_label || c?.tipo_conservazione || '',
+        tipoConservazione: c
+          ? (c.processo_tipo ? c.processo_tipo + ' → ' + (c.tipo_conservazione_label || c.tipo_conservazione || '') : '')
+          : (p.tipo || ''),
+        fonte: c ? 'processo_conservato' : 'processo'
+      };
+    }),
     ...prodotti.map((p) => ({ nome: p.denominazione || '', lotto: '', dataProduzione: '', scadenza: '', conservazione: p.conservazione || '', tipoConservazione: '', fonte: 'prodotto' })),
     ...schede.map((s) => ({ nome: s.nome || '', lotto: '', dataProduzione: '', scadenza: '', conservazione: s.contenuto?.ccp || '', tipoConservazione: '', fonte: 'scheda' })),
   ];
@@ -42,7 +71,7 @@ export async function renderEtichettePage(container) {
       <label class="field-label">Preparazione</label>
       <select id="et-scelta">
         <option value="">— scrivi un nome libero sotto —</option>
-        ${opzioni.map((o, i) => `<option value="${i}">${o.nome}${o.fonte === 'conservazione' ? ' — conservata' : o.fonte === 'processo' ? ' — processo' : ''}</option>`).join('')}
+        ${opzioni.map((o, i) => `<option value="${i}">${o.nome}${o.fonte === 'conservazione' || o.fonte === 'processo_conservato' ? ' — conservata' : o.fonte === 'processo' ? ' — processo' : ''}</option>`).join('')}
       </select>
       <label class="field-label">Nome etichetta</label>
       <input type="text" id="et-nome" placeholder="Scrivi il nome della preparazione">
