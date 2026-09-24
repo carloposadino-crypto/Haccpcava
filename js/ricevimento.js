@@ -2,7 +2,7 @@
 // Ogni DDT viene salvato come un unico documento con tutte le righe prodotto.
 // I documenti salvati possono essere riaperti e consultati.
 
-import { leggiTutti, aggiungi, where, oggiISO } from './store.js';
+import { leggiTutti, aggiungi, aggiorna, where, oggiISO } from './store.js';
 
 let righeCorrenti = [];
 let dataSelezionata = oggiISO();
@@ -38,7 +38,9 @@ function dettaglioRicevimento(r) {
       <div style="font-size:13px; line-height:1.6; margin-bottom:14px;">
         <div><strong>Fornitore:</strong> ${escapeHtml(r.fornitore_nome) || '—'}</div>
         <div><strong>N. documento:</strong> ${escapeHtml(r.numero_documento) || '—'}</div>
+        <div><strong>Data DDT:</strong> ${formatData(r.data_documento)}</div>
         <div><strong>Data registrazione:</strong> ${formatData(r.data_riferimento)}</div>
+        <button type="button" class="btn btn-secondary rc-modifica-data-ddt" data-id="${escapeHtml(r.id)}" style="margin-top:6px;">Modifica data DDT</button>
         <div><strong>Temperatura arrivo:</strong> ${r.temperatura !== null && r.temperatura !== undefined && r.temperatura !== '' ? escapeHtml(r.temperatura) + ' °C' : '—'}</div>
         <div><strong>Conformità:</strong> ${r.conformita === 'non_conforme' ? 'NON CONFORME' : 'Conforme'}</div>
         <div><strong>Note:</strong> ${escapeHtml(r.note) || '—'}</div>
@@ -134,7 +136,7 @@ export async function renderRicezioniPage(container, profilo) {
     renderRicezioniPage(container, profilo);
   });
 
-  container.querySelectorAll('.rc-apri').forEach((btn) => {
+  container.querySelectorAll('.rc-modifica-data-ddt').forEach((btn) => {\n    btn.addEventListener('click', async () => {\n      const r = listaGiorno.find((item) => item.id === btn.dataset.id);\n      if (!r) return;\n      const nuovaData = window.prompt('Inserisci la data del DDT nel formato AAAA-MM-GG:', r.data_documento || r.data_riferimento || oggiISO());\n      if (nuovaData === null) return;\n      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(nuovaData)) { alert('Data non valida. Usa il formato AAAA-MM-GG.'); return; }\n      try { await aggiorna('ricevimenti', r.id, { data_documento: nuovaData }); renderRicezioniPage(container, profilo); }\n      catch (err) { console.error(err); alert('Errore durante la modifica della data DDT.'); }\n    });\n  });\n\n  container.querySelectorAll('.rc-apri').forEach((btn) => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.id;
       ricevimentoAperto = ricevimentoAperto === id ? null : id;
@@ -185,7 +187,7 @@ export async function renderRicezioniPage(container, profilo) {
           if (result.error) { alert(result.error); nascondiStato(); return; }
           const data = result.data || {};
           if (data.fornitore) container.querySelector('#rc-fornitore').value = data.fornitore;
-          if (data.numeroDocumento) container.querySelector('#rc-numero-doc').value = data.numeroDocumento;
+          if (data.numeroDocumento) container.querySelector('#rc-numero-doc').value = data.numeroDocumento;\n          if (data.dataDocumento && /^\\d{4}-\\d{2}-\\d{2}$/.test(data.dataDocumento)) container.querySelector('#rc-data-documento').value = data.dataDocumento;
           if (Array.isArray(data.prodotti) && data.prodotti.length) {
             righeCorrenti = data.prodotti.map((p) => ({ nome: p.nome || p.descrizione || '', quantita: p.quantita || '', lotto: p.lotto || '', scadenza: p.scadenza || p.tmc || '', temperatura: p.temperatura || '', prezzo_unitario: p.prezzo_unitario ?? '', unita_prezzo: p.unita_prezzo || '', totale_riga: p.totale_riga ?? '' }));
             disegnaRighe();
@@ -207,7 +209,7 @@ export async function renderRicezioniPage(container, profilo) {
       const conformita = container.querySelector('#rc-conformita').value;
       await aggiungi('ricevimenti', {
         fornitore_nome: fornitore,
-        numero_documento: container.querySelector('#rc-numero-doc').value,
+        numero_documento: container.querySelector('#rc-numero-doc').value,\n        data_documento: container.querySelector('#rc-data-documento').value || null,
         voci,
         temperatura: container.querySelector('#rc-temperatura').value || null,
         conformita,
