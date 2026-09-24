@@ -30,6 +30,8 @@ export async function renderOggi(container, profilo, vaiA) {
   const pulizieDoneCount = pianoGiornaliero.filter((v) => voceIdCompletate.has(v.id)).length;
 
   const anomalie = await leggiTutti('non_conformita', [where('aperto_il', '>=', inizio), where('aperto_il', '<=', fine)]);
+  const ricevimentiOggi = await leggiTutti('ricevimenti', [where('data_riferimento', '==', oggi)]);
+  const conservazioniOggi = await leggiTutti('conservazioni', [where('data_riferimento', '==', oggi)]);
 
   container.innerHTML = `
     <div class="check-row" data-vai="temperature">
@@ -54,6 +56,16 @@ export async function renderOggi(container, profilo, vaiA) {
         <div class="t">Pulizie giornaliere</div>
         <div class="s">${pulizieDoneCount}/${pianoGiornaliero.length} completate</div>
       </div>
+      <span class="chev">›</span>
+    </div>
+    <div class="check-row" data-vai="ricevimento">
+      <span class="dot ${ricevimentiOggi.length > 0 ? 'ok' : 'pending'}"></span>
+      <div class="rt"><div class="t">Ricevimento merci</div><div class="s">${ricevimentiOggi.length} consegne registrate oggi</div></div>
+      <span class="chev">›</span>
+    </div>
+    <div class="check-row" data-vai="conservazione">
+      <span class="dot ${conservazioniOggi.length > 0 ? 'ok' : 'pending'}"></span>
+      <div class="rt"><div class="t">Conservazioni</div><div class="s">${conservazioniOggi.length} registrate oggi</div></div>
       <span class="chev">›</span>
     </div>
     <div class="check-row" data-vai="anomalie">
