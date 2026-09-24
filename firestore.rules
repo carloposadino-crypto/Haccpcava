@@ -75,7 +75,11 @@ service cloud.firestore {
     match /ricevimenti/{id} {
       allow read: if autenticato();
       allow create: if autenticato() && request.resource.data.registrato_da == request.auth.uid;
-      allow update, delete: if false;
+      // Un ricevimento già registrato non può essere modificato liberamente.
+      // È consentita soltanto la correzione della data riportata sul DDT.
+      allow update: if autenticato()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['data_documento']);
+      allow delete: if false;
     }
 
     match /prodotti/{id} {
