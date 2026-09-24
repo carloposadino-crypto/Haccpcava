@@ -143,7 +143,7 @@ export async function renderRicezioniPage(container, profilo) {
       if (!r) return;
       const nuovaData = window.prompt('Inserisci la data del DDT nel formato AAAA-MM-GG:', r.data_documento || r.data_riferimento || oggiISO());
       if (nuovaData === null) return;
-      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(nuovaData)) { alert('Data non valida. Usa il formato AAAA-MM-GG.'); return; }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(nuovaData)) { alert('Data non valida. Usa il formato AAAA-MM-GG.'); return; }
       try { await aggiorna('ricevimenti', r.id, { data_documento: nuovaData }); renderRicezioniPage(container, profilo); }
       catch (err) { console.error(err); alert('Errore durante la modifica della data DDT.'); }
     });
@@ -201,7 +201,7 @@ export async function renderRicezioniPage(container, profilo) {
           const data = result.data || {};
           if (data.fornitore) container.querySelector('#rc-fornitore').value = data.fornitore;
           if (data.numeroDocumento) container.querySelector('#rc-numero-doc').value = data.numeroDocumento;
-          if (data.dataDocumento && /^\\d{4}-\\d{2}-\\d{2}$/.test(data.dataDocumento)) container.querySelector('#rc-data-documento').value = data.dataDocumento;
+          if (data.dataDocumento && /^\d{4}-\d{2}-\d{2}$/.test(data.dataDocumento)) container.querySelector('#rc-data-documento').value = data.dataDocumento;
           if (Array.isArray(data.prodotti) && data.prodotti.length) {
             righeCorrenti = data.prodotti.map((p) => ({ nome: p.nome || p.descrizione || '', quantita: p.quantita || '', lotto: p.lotto || '', scadenza: p.scadenza || p.tmc || '', temperatura: p.temperatura || '', prezzo_unitario: p.prezzo_unitario ?? '', unita_prezzo: p.unita_prezzo || '', totale_riga: p.totale_riga ?? '' }));
             disegnaRighe();
