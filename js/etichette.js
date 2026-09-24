@@ -81,9 +81,29 @@ export async function renderEtichettePage(container) {
       </div>
       <div class="form-row">
         <div><label class="field-label">Scadenza</label><input type="date" id="et-scadenza"></div>
-        <div><label class="field-label">Conservazione</label><input type="text" id="et-conservazione" placeholder="es. ≤ +4 °C" readonly></div>
+        <div><label class="field-label">Conservazione</label>
+<select id="et-conservazione">
+<option value="">— Seleziona —</option>
+<option value="Frigorifero 0–4 °C">Frigorifero 0–4 °C</option>
+<option value="Freezer ≤ −18 °C">Freezer ≤ −18 °C</option>
+<option value="Sottovuoto in frigorifero">Sottovuoto in frigorifero</option>
+<option value="Sottovuoto in freezer">Sottovuoto in freezer</option>
+<option value="Altro">Altro</option>
+</select></div>
       </div>
-      <div><label class="field-label">Tipo di conservazione</label><input type="text" id="et-tipo-conservazione" placeholder="es. Abbattimento → Frigorifero 0–4 °C" readonly></div>
+      <div><label class="field-label">Tipo di conservazione</label>
+<select id="et-tipo-conservazione">
+<option value="">— Seleziona —</option>
+<option value="Cottura → Frigorifero 0–4 °C">Cottura → Frigorifero 0–4 °C</option>
+<option value="CBT → Frigorifero 0–4 °C">CBT → Frigorifero 0–4 °C</option>
+<option value="Cottura → Freezer ≤ −18 °C">Cottura → Freezer ≤ −18 °C</option>
+<option value="CBT → Freezer ≤ −18 °C">CBT → Freezer ≤ −18 °C</option>
+<option value="Abbattimento → Frigorifero 0–4 °C">Abbattimento → Frigorifero 0–4 °C</option>
+<option value="Abbattimento → Freezer ≤ −18 °C">Abbattimento → Freezer ≤ −18 °C</option>
+<option value="Sottovuoto → Frigorifero 0–4 °C">Sottovuoto → Frigorifero 0–4 °C</option>
+<option value="Sottovuoto → Freezer ≤ −18 °C">Sottovuoto → Freezer ≤ −18 °C</option>
+<option value="Altro">Altro</option>
+</select></div>
       <button class="btn btn-primary btn-block" id="et-genera">Genera etichetta</button>
     </div>
 
@@ -108,8 +128,8 @@ export async function renderEtichettePage(container) {
     container.querySelector('#et-lotto').value = scelta?.lotto || '';
     container.querySelector('#et-data-prod').value = scelta?.dataProduzione || '';
     container.querySelector('#et-scadenza').value = scelta?.scadenza || '';
-    container.querySelector('#et-conservazione').value = scelta?.conservazione || '';
-    container.querySelector('#et-tipo-conservazione').value = scelta?.tipoConservazione || scelta?.processo || '';
+    container.querySelector('#et-conservazione').value = '';
+    container.querySelector('#et-tipo-conservazione').value = '';
   });
 
   container.querySelector('#et-genera').addEventListener('click', () => {
@@ -127,7 +147,8 @@ export async function renderEtichettePage(container) {
     container.querySelector('#et-out-lotto').textContent = lotto ? `Lotto: ${lotto}` : 'Lotto: —';
     container.querySelector('#et-out-prod').textContent = dataProd ? `Prodotto il: ${dataProd}` : '';
     container.querySelector('#et-out-scad').textContent = scadenza ? `Da consumarsi entro: ${scadenza}` : '';
-    container.querySelector('#et-out-conservazione').textContent = scelta?.conservazione ? `Conservazione: ${scelta.conservazione}` : '';
+    const conservazione = container.querySelector('#et-conservazione').value;
+    container.querySelector('#et-out-conservazione').textContent = conservazione ? 'Conservazione: ' + conservazione : '';
     const tipo = container.querySelector('#et-tipo-conservazione').value;
     if (tipo) container.querySelector('#et-out-conservazione').textContent += ` — ${tipo}`;
     container.querySelector('#printable-label-card').style.display = 'block';
