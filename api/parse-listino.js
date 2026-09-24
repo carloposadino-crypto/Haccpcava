@@ -48,9 +48,9 @@ module.exports = async function handler(req, res) {
       + 'Restituisci ESCLUSIVAMENTE JSON valido, senza markdown, nel formato: '
       + '{ "fornitore": "Nome o stringa vuota", "voci": [{ "nome": "Nome Ingrediente", "prezzo_kg": 12.50, "unita_originale": "kg" }] }';
 
-    // In caso di sovraccarico Gemini (503) o rate limit (429), riprova
-    // automaticamente e poi passa a Flash-Lite.
-    const modelli = ['gemini-flash-latest', 'gemini-flash-latest', 'gemini-2.5-flash-lite'];
+    // Usa modelli stabili e multimodali. Il PDF è supportato da Gemini Flash.
+    // In caso di sovraccarico o rate limit, prova automaticamente il modello successivo.
+    const modelli = ['gemini-3.7-flash', 'gemini-3.8-flash', 'gemini-2.5-flash-lite'];
     let response = null;
     let geminiData = null;
     let ultimoErrore = null;
