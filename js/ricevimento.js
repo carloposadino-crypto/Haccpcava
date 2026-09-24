@@ -9,7 +9,7 @@ let dataSelezionata = oggiISO();
 let ricevimentoAperto = null;
 
 function rigaVuota() {
-  return { nome: '', quantita: '', lotto: '', scadenza: '', temperatura: '' };
+  return { nome: '', quantita: '', lotto: '', scadenza: '', temperatura: '', prezzo_unitario: '', unita_prezzo: '', totale_riga: '' };
 }
 
 function escapeHtml(value) {
@@ -52,7 +52,7 @@ function dettaglioRicevimento(r) {
               <th style="text-align:left; padding:7px; border-bottom:1px solid #cbd5e1;">Quantità</th>
               <th style="text-align:left; padding:7px; border-bottom:1px solid #cbd5e1;">Lotto</th>
               <th style="text-align:left; padding:7px; border-bottom:1px solid #cbd5e1;">Scadenza / TMC</th>
-              <th style="text-align:left; padding:7px; border-bottom:1px solid #cbd5e1;">Temp.</th>
+              <th style="text-align:left; padding:7px; border-bottom:1px solid #cbd5e1;">Temp.</th><th style="text-align:left; padding:7px; border-bottom:1px solid #cbd5e1;">Prezzo unit.</th><th style="text-align:left; padding:7px; border-bottom:1px solid #cbd5e1;">Totale</th>
             </tr></thead>
             <tbody>
               ${prodotti.map((v) => `<tr>
@@ -60,7 +60,7 @@ function dettaglioRicevimento(r) {
                 <td style="padding:8px 7px; border-bottom:1px solid #e2e8f0; vertical-align:top;">${escapeHtml(v.quantita) || '—'}</td>
                 <td style="padding:8px 7px; border-bottom:1px solid #e2e8f0; vertical-align:top;">${escapeHtml(v.lotto) || '—'}</td>
                 <td style="padding:8px 7px; border-bottom:1px solid #e2e8f0; vertical-align:top;">${escapeHtml(v.scadenza) || '—'}</td>
-                <td style="padding:8px 7px; border-bottom:1px solid #e2e8f0; vertical-align:top;">${v.temperatura !== null && v.temperatura !== undefined && v.temperatura !== '' ? escapeHtml(v.temperatura) + ' °C' : '—'}</td>
+                <td style="padding:8px 7px; border-bottom:1px solid #e2e8f0; vertical-align:top;">${v.temperatura !== null && v.temperatura !== undefined && v.temperatura !== '' ? escapeHtml(v.temperatura) + ' °C' : '—'}</td><td style="padding:8px 7px; border-bottom:1px solid #e2e8f0; vertical-align:top;">${v.prezzo_unitario !== null && v.prezzo_unitario !== undefined && v.prezzo_unitario !== '' ? '€ ' + escapeHtml(v.prezzo_unitario) + (v.unita_prezzo ? ' / ' + escapeHtml(v.unita_prezzo) : '') : '—'}</td><td style="padding:8px 7px; border-bottom:1px solid #e2e8f0; vertical-align:top;">${v.totale_riga !== null && v.totale_riga !== undefined && v.totale_riga !== '' ? '€ ' + escapeHtml(v.totale_riga) : '—'}</td>
               </tr>`).join('')}
             </tbody>
           </table>
@@ -146,12 +146,12 @@ export async function renderRicezioniPage(container, profilo) {
     const wrap = container.querySelector('#rc-righe');
     if (!wrap) return;
     wrap.innerHTML = righeCorrenti.map((riga, i) => `
-      <div data-riga="${i}" style="display:grid; grid-template-columns:minmax(280px,1fr) 110px 130px 130px 100px auto; gap:10px; align-items:end; margin-bottom:14px; padding:12px; border:1px solid #e2e8f0; border-radius:10px; background:#f8fafc;">
+      <div data-riga="${i}" style="display:grid; grid-template-columns:minmax(260px,1fr) 90px 110px 110px 80px 100px 100px auto; gap:10px; align-items:end; margin-bottom:14px; padding:12px; border:1px solid #e2e8f0; border-radius:10px; background:#f8fafc;">
         <div style="min-width:0;"><label class="field-label">Descrizione completa prodotto</label><textarea rows="2" placeholder="Descrizione completa del prodotto come da DDT" data-campo="nome" style="width:100%; min-height:58px; resize:vertical; box-sizing:border-box; white-space:pre-wrap; overflow-wrap:anywhere;">${escapeHtml(riga.nome)}</textarea></div>
         <div><label class="field-label">Quantità</label><input type="text" placeholder="Quantità" data-campo="quantita" value="${escapeHtml(riga.quantita)}"></div>
         <div><label class="field-label">Lotto</label><input type="text" placeholder="Lotto" data-campo="lotto" value="${escapeHtml(riga.lotto)}"></div>
         <div><label class="field-label">Scadenza / TMC</label><input type="text" placeholder="gg/mm/aaaa" data-campo="scadenza" value="${escapeHtml(riga.scadenza)}"></div>
-        <div><label class="field-label">Temp. °C</label><input type="number" step="0.1" placeholder="°C" data-campo="temperatura" value="${escapeHtml(riga.temperatura)}"></div>
+        <div><label class="field-label">Temp. °C</label><input type="number" step="0.1" placeholder="°C" data-campo="temperatura" value="${escapeHtml(riga.temperatura)}"></div><div><label class="field-label">Prezzo unit. €</label><input type="number" step="0.01" placeholder="€" data-campo="prezzo_unitario" value="${escapeHtml(riga.prezzo_unitario)}"></div><div><label class="field-label">Totale riga €</label><input type="number" step="0.01" placeholder="€" data-campo="totale_riga" value="${escapeHtml(riga.totale_riga)}"></div>
         ${righeCorrenti.length > 1 ? '<button type="button" class="btn btn-danger rc-rimuovi" style="padding:8px 10px;">✕</button>' : ''}
       </div>`).join('');
     wrap.querySelectorAll('[data-riga]').forEach((rigaEl) => {
@@ -187,7 +187,7 @@ export async function renderRicezioniPage(container, profilo) {
           if (data.fornitore) container.querySelector('#rc-fornitore').value = data.fornitore;
           if (data.numeroDocumento) container.querySelector('#rc-numero-doc').value = data.numeroDocumento;
           if (Array.isArray(data.prodotti) && data.prodotti.length) {
-            righeCorrenti = data.prodotti.map((p) => ({ nome: p.nome || p.descrizione || '', quantita: p.quantita || '', lotto: p.lotto || '', scadenza: p.scadenza || p.tmc || '', temperatura: p.temperatura || '' }));
+            righeCorrenti = data.prodotti.map((p) => ({ nome: p.nome || p.descrizione || '', quantita: p.quantita || '', lotto: p.lotto || '', scadenza: p.scadenza || p.tmc || '', temperatura: p.temperatura || '', prezzo_unitario: p.prezzo_unitario ?? '', unita_prezzo: p.unita_prezzo || '', totale_riga: p.totale_riga ?? '' }));
             disegnaRighe();
           }
           mostraStato(result.isDemo ? '⚠️ Modalità demo: attiva GEMINI_API_KEY su Vercel per la lettura reale.' : '✓ Documento letto. Controlla le descrizioni complete prima di registrare il ricevimento.');
@@ -200,7 +200,7 @@ export async function renderRicezioniPage(container, profilo) {
   const salva = container.querySelector('#rc-salva');
   if (salva) salva.addEventListener('click', async (e) => {
     const fornitore = container.querySelector('#rc-fornitore').value.trim();
-    const voci = righeCorrenti.filter((r) => r.nome.trim()).map((r) => ({ nome: r.nome.trim(), quantita: r.quantita, lotto: r.lotto, scadenza: r.scadenza, temperatura: r.temperatura }));
+    const voci = righeCorrenti.filter((r) => r.nome.trim()).map((r) => ({ nome: r.nome.trim(), quantita: r.quantita, lotto: r.lotto, scadenza: r.scadenza, temperatura: r.temperatura, prezzo_unitario: r.prezzo_unitario === '' ? null : Number(r.prezzo_unitario), unita_prezzo: r.unita_prezzo || null, totale_riga: r.totale_riga === '' ? null : Number(r.totale_riga) }));
     if (!fornitore || voci.length === 0) { alert('Inserisci almeno il fornitore e un prodotto.'); return; }
     e.currentTarget.disabled = true;
     try {
