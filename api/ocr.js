@@ -40,7 +40,7 @@ Per ogni riga prodotto:
 - NON sostituire una descrizione con un nome generico o con una tua interpretazione;
 - mantieni marca, specie, taglio, formato, pezzatura, qualità, origine, codice articolo o altre informazioni descrittive quando sono presenti nella riga;
 - se il documento usa abbreviazioni, prova a leggerle e trascriverle esattamente, ma NON inventare l'espansione dell'abbreviazione;
-- conserva quantità e unità di misura esattamente come riportate;
+- conserva quantità e unità di misura esattamente come riportate;\n- leggi anche il PREZZO UNITARIO della riga, se presente nel documento;\n- leggi il TOTALE RIGA della merce, se presente;\n- non confondere prezzo unitario, totale riga, quantità, codice articolo, sconto o numero di documento;\n- se il prezzo non è chiaramente leggibile o non è presente, restituisci null; NON inventare o stimare il prezzo;
 - conserva il numero di lotto esattamente come riportato;
 - includi TUTTE le righe prodotto leggibili, anche se la descrizione è ripetitiva;
 - non unire prodotti diversi;
@@ -59,7 +59,7 @@ Restituisci ESCLUSIVAMENTE un oggetto JSON valido, senza markdown e senza commen
     {
       "nome": "Descrizione COMPLETA della riga così come appare sul documento",
       "quantita": "Quantità e unità esattamente come riportate",
-      "lotto": "Numero lotto esattamente come riportato oppure null"
+      "lotto": "Numero lotto esattamente come riportato oppure null",\n      "scadenza": "Scadenza/TMC se presente oppure null",\n      "prezzo_unitario": null,\n      "unita_prezzo": "kg/pezzo/confezione/altro oppure null",\n      "totale_riga": null
     }
   ]
 }`;
