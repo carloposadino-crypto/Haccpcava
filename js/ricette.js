@@ -73,6 +73,7 @@ export async function renderRicettePage(container, profilo) {
       <div class="form-row">
         <div><label class="field-label">Codice</label><input type="text" id="sc-codice" placeholder="Es. SEC-01"></div>
         <div><label class="field-label">Numero porzioni</label><input type="number" id="sc-porzioni" value="20"></div>
+        <div><label class="field-label">Prezzo vendita (€)</label><input type="number" step="0.01" id="sc-prezzo-vendita" placeholder="Es. 18.00"></div>
       </div>
 
       <label class="field-label">Ingredienti (sempre in grammi)</label>
@@ -100,7 +101,7 @@ export async function renderRicettePage(container, profilo) {
           <div class="check-row" data-scheda="${s.id}">
             <div class="rt">
               <div class="t">${s.nome}</div>
-              <div class="s">${s.codice || ''}${s.costo_a_porzione != null ? ` · € ${s.costo_a_porzione.toFixed(2)} a porzione` : ''}</div>
+              <div class="s">${s.codice || ''}${s.costo_a_porzione != null ? ` · € ${s.costo_a_porzione.toFixed(2)} a porzione` : ''}${s.food_cost_percentuale != null ? ` · FC ${s.food_cost_percentuale.toFixed(1)}%` : ''}</div>
             </div>
             <span class="badge ${STATO_BADGE[s.stato] || 'badge-pending'}">${STATO_LABEL[s.stato] || s.stato}</span>
             ${(s.stato !== 'approvata' && profilo.ruolo === 'responsabile') ? '<button class="btn btn-secondary sc-approva" style="margin-left:8px;">Approva</button>' : ''}
@@ -151,10 +152,12 @@ export async function renderRicettePage(container, profilo) {
     });
     const porzioni = parseInt(container.querySelector('#sc-porzioni').value, 10) || 1;
     const costoPorzione = costoTotale / porzioni;
+    const prezzoVendita = parseFloat(container.querySelector('#sc-prezzo-vendita')?.value) || 0;
+    const foodCostPercentuale = prezzoVendita > 0 ? (costoPorzione / prezzoVendita) * 100 : null;
     const box = container.querySelector('#sc-costo-box');
-    box.innerHTML = `Costo ingredienti: <strong>€ ${costoTotale.toFixed(2)}</strong> — a porzione: <strong>€ ${costoPorzione.toFixed(2)}</strong>`
+    box.innerHTML = `Costo ingredienti: <strong>€ ${costoTotale.toFixed(2)}</strong> — a porzione: <strong>€ ${costoPorzione.toFixed(2)}</strong>` + (foodCostPercentuale != null ? ` — Food cost: <strong>${foodCostPercentuale.toFixed(1)}%</strong>` : '')
       + (senzaPrezzo > 0 ? `<br><span style="color:#b45309;">⚠️ ${senzaPrezzo} ingrediente/i senza prezzo nel listino: il costo è parziale. Aggiungili in "Altro → Listino prezzi".</span>` : '');
-    return { costoTotale, costoPorzione, porzioni };
+    return { costoTotale, costoPorzione, porzioni, prezzoVendita, foodCostPercentuale };
   }
 
   function disegnaRighe() {
@@ -181,6 +184,7 @@ export async function renderRicettePage(container, profilo) {
 
   container.querySelector('#sc-add-riga').addEventListener('click', () => { righeCorrenti.push(rigaVuota()); disegnaRighe(); calcolaCosto(); });
   container.querySelector('#sc-porzioni').addEventListener('input', calcolaCosto);
+  container.querySelector('#sc-prezzo-vendita').addEventListener('input', calcolaCosto);
 
   const statusBox = container.querySelector('#sc-import-status');
   const mostraStato = (msg) => { statusBox.style.display = 'block'; statusBox.textContent = msg; };
@@ -242,7 +246,7 @@ export async function renderRicettePage(container, profilo) {
     const nome = container.querySelector('#sc-nome').value.trim();
     if (!nome) { alert('Inserisci il nome della preparazione.'); return; }
     const righeValide = righeCorrenti.filter((r) => r.nome.trim());
-    const { costoTotale, costoPorzione, porzioni } = calcolaCosto();
+    const { costoTotale, costoPorzione, porzioni, prezzoVendita, foodCostPercentuale } = calcolaCosto();
 
     e.currentTarget.disabled = true;
     try {
@@ -261,6 +265,8 @@ export async function renderRicettePage(container, profilo) {
         },
         costo_totale: Math.round(costoTotale * 100) / 100,
         costo_a_porzione: Math.round(costoPorzione * 100) / 100,
+        prezzo_vendita: prezzoVendita > 0 ? Math.round(prezzoVendita * 100) / 100 : null,
+        food_cost_percentuale: foodCostPercentuale != null ? Math.round(foodCostPercentuale * 10) / 10 : null,
         autore_id: profilo.id,
       }, 'creato_il');
       renderRicettePage(container, profilo);
