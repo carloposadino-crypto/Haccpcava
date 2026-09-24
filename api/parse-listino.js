@@ -50,7 +50,7 @@ module.exports = async function handler(req, res) {
 
     // Usa modelli stabili e multimodali. Il PDF è supportato da Gemini Flash.
     // In caso di sovraccarico o rate limit, prova automaticamente il modello successivo.
-    const modelli = ['gemini-3.7-flash', 'gemini-3.8-flash', 'gemini-2.5-flash-lite'];
+    const modelli = ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'];
     let response = null;
     let geminiData = null;
     let ultimoErrore = null;
