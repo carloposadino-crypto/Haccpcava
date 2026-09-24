@@ -13,10 +13,26 @@ export async function renderEtichettePage(container) {
     leggiTutti('conservazioni').catch(() => []),
   ]);
   const opzioni = [
-    ...prodotti.map((p) => ({ nome: p.denominazione, conservazione: p.conservazione })),
-    ...schede.map((s) => ({ nome: s.nome, conservazione: s.contenuto?.ccp || '' })),
-    ...processi.map((p) => ({ nome: p.prodotto, lotto: p.valori?.lotto_materia_prima || '', dataProduzione: p.data_riferimento || '', processo: p.tipo })),
-    ...conservazioni.map((c) => ({ nome: c.prodotto, lotto: c.lotto || '', dataProduzione: c.data_produzione || c.data_riferimento || '', scadenza: c.scadenza || '', conservazione: c.tipo_conservazione_label || c.tipo_conservazione, processo: c.processo_tipo || '', tipoConservazione: c.tipo_conservazione_label || c.tipo_conservazione || '' })),
+    ...conservazioni.map((c) => ({
+      nome: c.prodotto || 'Preparazione',
+      lotto: c.lotto || '',
+      dataProduzione: c.data_produzione || c.data_riferimento || '',
+      scadenza: c.scadenza || '',
+      conservazione: c.tipo_conservazione_label || c.tipo_conservazione || '',
+      tipoConservazione: c.processo_tipo ? (c.processo_tipo + ' → ' + (c.tipo_conservazione_label || c.tipo_conservazione || '')) : (c.tipo_conservazione_label || c.tipo_conservazione || ''),
+      fonte: 'conservazione'
+    })),
+    ...processi.map((p) => ({
+      nome: p.prodotto || 'Preparazione',
+      lotto: p.valori?.lotto_materia_prima || '',
+      dataProduzione: p.data_riferimento || '',
+      scadenza: '',
+      conservazione: '',
+      tipoConservazione: p.tipo || '',
+      fonte: 'processo'
+    })),
+    ...prodotti.map((p) => ({ nome: p.denominazione || '', lotto: '', dataProduzione: '', scadenza: '', conservazione: p.conservazione || '', tipoConservazione: '', fonte: 'prodotto' })),
+    ...schede.map((s) => ({ nome: s.nome || '', lotto: '', dataProduzione: '', scadenza: '', conservazione: s.contenuto?.ccp || '', tipoConservazione: '', fonte: 'scheda' })),
   ];
 
   container.innerHTML = `
@@ -26,7 +42,7 @@ export async function renderEtichettePage(container) {
       <label class="field-label">Preparazione</label>
       <select id="et-scelta">
         <option value="">— scrivi un nome libero sotto —</option>
-        ${opzioni.map((o, i) => `<option value="${i}">${o.nome}</option>`).join('')}
+        ${opzioni.map((o, i) => `<option value="${i}">${o.nome}${o.fonte === 'conservazione' ? ' — conservata' : o.fonte === 'processo' ? ' — processo' : ''}</option>`).join('')}
       </select>
       <label class="field-label">Nome etichetta</label>
       <input type="text" id="et-nome" placeholder="Nome preparazione" readonly>
@@ -38,7 +54,7 @@ export async function renderEtichettePage(container) {
         <div><label class="field-label">Scadenza</label><input type="date" id="et-scadenza"></div>
         <div><label class="field-label">Conservazione</label><input type="text" id="et-conservazione" placeholder="es. ≤ +4 °C" readonly></div>
       </div>
-      <div><label class="field-label">Tipo di conservazione</label><input type="text" id="et-tipo-conservazione" placeholder="es. Abbattuto positivo" readonly></div>
+      <div><label class="field-label">Tipo di conservazione</label><input type="text" id="et-tipo-conservazione" placeholder="es. Abbattimento → Frigorifero 0–4 °C" readonly></div>
       </div>
       <button class="btn btn-primary btn-block" id="et-genera">Genera etichetta</button>
     </div>
