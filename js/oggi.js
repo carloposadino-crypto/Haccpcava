@@ -4,11 +4,34 @@ const GIORNI_ALERT_SCADENZA = 3;
 
 function dataScadenzaISO(value) {
   if (!value) return null;
+
+  // Ricevimento merci salva la scadenza come testo, normalmente gg/mm/aaaa.
+  // Accettiamo anche aaaa-mm-gg, gg-mm-aaaa e gg.mm.aaaa.
   const s = String(value).trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  const m = s.match(/^(\d{1,2})[\\/.-](\d{1,2})[\\/.-](\d{4})$/);
-  if (!m) return null;
-  return `${m[3]}-${String(m[2]).padStart(2, '0')}-${String(m[1]).padStart(2, '0')}`;
+  let giorno, mese, anno;
+
+  let m = s.match(/^(\\d{1,2})[\\/.-](\\d{1,2})[\\/.-](\\d{4})$/);
+  if (m) {
+    giorno = Number(m[1]);
+    mese = Number(m[2]);
+    anno = Number(m[3]);
+  } else {
+    m = s.match(/^(\\d{4})[\\/.-](\\d{1,2})[\\/.-](\\d{1,2})$/);
+    if (!m) return null;
+    anno = Number(m[1]);
+    mese = Number(m[2]);
+    giorno = Number(m[3]);
+  }
+
+  // Scarta date impossibili.
+  const d = new Date(Date.UTC(anno, mese - 1, giorno));
+  if (
+    d.getUTCFullYear() !== anno ||
+    d.getUTCMonth() !== mese - 1 ||
+    d.getUTCDate() !== giorno
+  ) return null;
+
+  return `${anno}-${String(mese).padStart(2, '0')}-${String(giorno).padStart(2, '0')}`;
 }
 
 function formatDataBreve(iso) {
