@@ -73,7 +73,9 @@ function dettaglioRicevimento(r) {
 export async function renderRicezioniPage(container, profilo) {
   container.innerHTML = `<div class="empty-state">Caricamento…</div>`;
 
-  const listaGiorno = (await leggiTutti('ricevimenti', [where('data_riferimento', '==', dataSelezionata)]))
+  // Mostra tutti i DDT già registrati: il filtro per data non deve nascondere
+  // lo storico dei ricevimenti. La data selezionata resta utile per la registrazione.
+  const listaGiorno = (await leggiTutti('ricevimenti'))
     .sort((a, b) => (b.registrato_il?.seconds || 0) - (a.registrato_il?.seconds || 0));
 
   righeCorrenti = [rigaVuota()];
@@ -113,7 +115,7 @@ export async function renderRicezioniPage(container, profilo) {
       <textarea id="rc-note"></textarea>
       <button class="btn btn-primary btn-block" id="rc-salva">Registra ricevimento</button>
     </div>` : ''}
-    <h3 style="font-size:14px; color:#64748b; margin:16px 0 8px;">Ricevimenti del ${dataSelezionata} (${listaGiorno.length})</h3>
+    <h3 style="font-size:14px; color:#64748b; margin:16px 0 8px;">Ricevimenti registrati (${listaGiorno.length})</h3>
     ${listaGiorno.length === 0 ? '<div class="empty-state">Nessun ricevimento registrato in questa data.</div>' : `
       <div class="list-card">
         ${listaGiorno.map((r) => `
