@@ -10,13 +10,13 @@ function dataScadenzaISO(value) {
   const s = String(value).trim();
   let giorno, mese, anno;
 
-  let m = s.match(/^(\\d{1,2})[\\/.-](\\d{1,2})[\\/.-](\\d{4})$/);
+  let m = s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/);
   if (m) {
     giorno = Number(m[1]);
     mese = Number(m[2]);
     anno = Number(m[3]);
   } else {
-    m = s.match(/^(\\d{4})[\\/.-](\\d{1,2})[\\/.-](\\d{1,2})$/);
+    m = s.match(/^(\d{4})[\/.-](\d{1,2})[\/.-](\d{1,2})$/);
     if (!m) return null;
     anno = Number(m[1]);
     mese = Number(m[2]);
