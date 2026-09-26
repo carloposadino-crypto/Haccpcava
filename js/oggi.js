@@ -1,5 +1,30 @@
 import { leggiTutti, inizioEFineGiorno, oggiISO, where, orderBy } from './store.js';
 
+const GIORNI_ALERT_SCADENZA = 3;
+
+function dataScadenzaISO(value) {
+  if (!value) return null;
+  const s = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m = s.match(/^(\d{1,2})[\\/.-](\d{1,2})[\\/.-](\d{4})$/);
+  if (!m) return null;
+  return `${m[3]}-${String(m[2]).padStart(2, '0')}-${String(m[1]).padStart(2, '0')}`;
+}
+
+function formatDataBreve(iso) {
+  const [a, m, g] = iso.split('-');
+  return `${g}/${m}/${a}`;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 function isAbbattitore(a) {
   const nome = String(a.nome || '').toLowerCase();
   const tipo = String(a.tipo || '').toLowerCase();
@@ -33,7 +58,46 @@ export async function renderOggi(container, profilo, vaiA) {
   const ricevimentiOggi = await leggiTutti('ricevimenti', [where('data_riferimento', '==', oggi)]);
   const conservazioniOggi = await leggiTutti('conservazioni', [where('data_riferimento', '==', oggi)]);
 
+  const ricevimenti = await leggiTutti('ricevimenti');
+  const oggiDate = new Date(`${oggi}T00:00:00`);
+  const limiteDate = new Date(oggiDate);
+  limiteDate.setDate(limiteDate.getDate() + GIORNI_ALERT_SCADENZA);
+  const scadenzeAlert = [];
+
+  ricevimenti.forEach((r) => {
+    (Array.isArray(r.voci) ? r.voci : []).forEach((v) => {
+      const scadenza = dataScadenzaISO(v.scadenza);
+      if (!scadenza) return;
+      const data = new Date(`${scadenza}T00:00:00`);
+      if (Number.isNaN(data.getTime())) return;
+      if (data <= limiteDate) {
+        const diffGiorni = Math.round((data - oggiDate) / 86400000);
+        scadenzeAlert.push({ nome: v.nome || 'Prodotto senza descrizione', lotto: v.lotto || '', scadenza, diffGiorni });
+      }
+    });
+  });
+
+  scadenzeAlert.sort((a, b) => a.scadenza.localeCompare(b.scadenza));
+
+  const scaduti = scadenzeAlert.filter((p) => p.diffGiorni < 0);
+  const inScadenza = scadenzeAlert.filter((p) => p.diffGiorni >= 0);
+
   container.innerHTML = `
+    ${scadenzeAlert.length ? `
+      <div class="list-card" style="border:1px solid ${scaduti.length ? '#dc2626' : '#f59e0b'}; background:${scaduti.length ? '#fef2f2' : '#fffbeb'}; margin-bottom:12px; padding:12px;">
+        <div style="font-size:15px; font-weight:bold; color:${scaduti.length ? '#b91c1c' : '#92400e'}; margin-bottom:6px;">⚠️ Scadenze prodotti</div>
+        <div style="font-size:12px; color:#475569; margin-bottom:10px;">${scaduti.length ? `${scaduti.length} prodotto/i già scaduto/i` : ''}${scaduti.length && inScadenza.length ? ' · ' : ''}${inScadenza.length ? `${inScadenza.length} in scadenza entro ${GIORNI_ALERT_SCADENZA} giorni` : ''}</div>
+        ${scadenzeAlert.map((p) => `
+          <div style="padding:8px 0; border-top:1px solid #e2e8f0;">
+            <div style="font-size:13px; font-weight:600;">${escapeHtml(p.nome)}</div>
+            <div style="font-size:12px; color:${p.diffGiorni < 0 ? '#b91c1c' : '#92400e'}; margin-top:2px;">
+              ${p.diffGiorni < 0 ? `SCADUTO il ${formatDataBreve(p.scadenza)}` : p.diffGiorni === 0 ? `SCADENZA OGGI · ${formatDataBreve(p.scadenza)}` : `Scade il ${formatDataBreve(p.scadenza)} · tra ${p.diffGiorni} giorni`}${p.lotto ? ` · Lotto ${escapeHtml(p.lotto)}` : ''}
+            </div>
+          </div>
+        `).join('')}
+        <button type="button" class="btn btn-secondary btn-block" id="oggi-apri-ricevimento">Vai a Ricevimento merci</button>
+      </div>
+    ` : ''}
     <div class="check-row" data-vai="temperature">
       <span class="dot ${apparecchiatureRilevate.size === 0 ? 'pending' : fuoriRange ? 'warn' : apparecchiatureRilevate.size === apparecchiature.length ? 'ok' : 'pending'}"></span>
       <div class="rt">
@@ -77,6 +141,9 @@ export async function renderOggi(container, profilo, vaiA) {
       <span class="chev">›</span>
     </div>
   `;
+
+  const apriRicevimento = container.querySelector('#oggi-apri-ricevimento');
+  if (apriRicevimento) apriRicevimento.addEventListener('click', () => vaiA('ricevimento'));
 
   container.querySelectorAll('[data-vai]').forEach((el) => {
     el.addEventListener('click', () => vaiA(el.dataset.vai));
