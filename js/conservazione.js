@@ -1,7 +1,7 @@
 // Registro Conservazione La Cava HACCP.
 // Collegamento di tracciabilità:
 // Ricevimento -> Lotto -> Processo -> Conservazione.
-//
+// Una materia prima cruda può essere conservata direttamente dopo il ricevimento.
 // Le nuove registrazioni possono essere create solo per oggi.
 // Le registrazioni già presenti restano consultabili.
 
@@ -36,6 +36,7 @@ function tipoProcessoLabel(tipo) {
     rigenerazione: 'Rigenerazione',
     scongelamento: 'Scongelamento controllato',
     crudo_pronto: 'Preparazione cruda / pronta al consumo',
+    materia_cruda: 'Materia prima cruda / ricevimento merci',
   };
   return map[tipo] || tipo || 'Processo';
 }
@@ -89,7 +90,8 @@ export async function renderConservazionePage(container, profilo) {
     <div class="list-card">
       <label class="field-label">Processo di origine</label>
       <select id="cv-processo">
-        <option value="">— Seleziona il processo registrato —</option>
+        <option value="">— Seleziona l'origine della conservazione —</option>
+        <option value="materia_cruda">Materia prima cruda / ricevuta</option>
         ${processiDisponibili.map((p) => `
           <option value="${escapeHtml(p.id)}">
             ${escapeHtml(tipoProcessoLabel(p.tipo))} — ${escapeHtml(p.prodotto || 'Preparazione')}
@@ -98,6 +100,13 @@ export async function renderConservazionePage(container, profilo) {
           </option>
         `).join('')}
       </select>
+
+      <div id="cv-crudo-fields" style="display:none; margin-top:10px; padding:10px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px;">
+        <label class="field-label">Prodotto / materia prima</label>
+        <input type="text" id="cv-crudo-prodotto" placeholder="Es. Controfiletto di Fassona crudo">
+        <label class="field-label">Lotto materia prima</label>
+        <input type="text" id="cv-crudo-lotto" placeholder="Lotto riportato sul DDT / confezione">
+      </div>
 
       <div id="cv-processo-info" style="display:none; margin-top:8px; padding:10px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; font-size:12px; color:#475569;"></div>
 
@@ -183,7 +192,16 @@ export async function renderConservazionePage(container, profilo) {
     processoSelect.addEventListener('change', () => {
       const processo = processiDisponibili.find((p) => p.id === processoSelect.value);
       const info = container.querySelector('#cv-processo-info');
+      const crudoFields = container.querySelector('#cv-crudo-fields');
+
+      if (crudoFields) crudoFields.style.display = processoSelect.value === 'materia_cruda' ? 'block' : 'none';
       if (!info) return;
+
+      if (processoSelect.value === 'materia_cruda') {
+        info.style.display = 'block';
+        info.innerHTML = '<strong>Origine:</strong> materia prima cruda ricevuta. Compila prodotto e lotto della confezione/DDT.';
+        return;
+      }
 
       if (!processo) {
         info.style.display = 'none';
@@ -217,15 +235,24 @@ export async function renderConservazionePage(container, profilo) {
   if (salvaBtn) {
     salvaBtn.addEventListener('click', async () => {
       if (dataSelezionata !== oggiISO()) {
-        alert('Le nuove registrazioni possono essere effettuate solo per la data odierna.');
+        alert('Le nuove registrazioni podem ser efetuadas somente per la data odierna.');
         return;
       }
 
       const processoId = container.querySelector('#cv-processo').value;
-      const processo = processiDisponibili.find((p) => p.id === processoId);
+      const isMateriaCruda = processoId === 'materia_cruda';
+      const processo = isMateriaCruda ? null : processiDisponibili.find((p) => p.id === processoId);
 
-      if (!processo) {
-        alert('Seleziona il processo di origine.');
+      if (!processo && !isMateriaCruda) {
+        alert('Seleziona il processo di origine oppure “Materia prima cruda / ricevuta”.');
+        return;
+      }
+
+      const prodottoCrudo = isMateriaCruda ? container.querySelector('#cv-crudo-prodotto').value.trim() : '';
+      const lottoCrudo = isMateriaCruda ? container.querySelector('#cv-crudo-lotto').value.trim() : '';
+
+      if (isMateriaCruda && !prodottoCrudo) {
+        alert('Inserisci il nome della materia prima cruda.');
         return;
       }
 
@@ -243,12 +270,12 @@ export async function renderConservazionePage(container, profilo) {
 
       try {
         await aggiungi('conservazioni', {
-          processo_id: processo.id,
-          processo_tipo: processo.tipo,
-          processo_data: processo.data_riferimento || null,
-          prodotto: processo.prodotto || '',
-          lotto: processo.valori?.lotto_materia_prima || null,
-          ricevimento_collegato: processo.ricevimento_collegato || null,
+          processo_id: processo ? processo.id : null,
+          processo_tipo: processo ? processo.tipo : 'materia_cruda',
+          processo_data: processo ? (processo.data_riferimento || null) : oggiISO(),
+          prodotto: processo ? (processo.prodotto || '') : prodottoCrudo,
+          lotto: processo ? (processo.valori?.lotto_materia_prima || null) : (lottoCrudo || null),
+          ricevimento_collegato: processo ? (processo.ricevimento_collegato || null) : null,
           tipo_conservazione: tipo,
           tipo_conservazione_label: TIPI_CONSERVAZIONE.find(([v]) => v === tipo)?.[1] || tipo,
           apparecchiatura_id: apparecchiatura.id,
