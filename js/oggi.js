@@ -1,4 +1,4 @@
-import { leggiTutti, inizioEFineGiorno, oggiISO, where, orderBy } from './store.js';
+import { leggiTutti, aggiorna, inizioEFineGiorno, oggiISO, where, orderBy } from './store.js';
 
 const GIORNI_ALERT_SCADENZA = 3;
 
@@ -88,14 +88,15 @@ export async function renderOggi(container, profilo, vaiA) {
   const scadenzeAlert = [];
 
   ricevimenti.forEach((r) => {
-    (Array.isArray(r.voci) ? r.voci : []).forEach((v) => {
+    (Array.isArray(r.voci) ? r.voci : []).forEach((v, indiceVoce) => {
+      if (v.stato === 'utilizzato' || v.stato === 'eliminato') return;
       const scadenza = dataScadenzaISO(v.scadenza);
       if (!scadenza) return;
       const data = new Date(`${scadenza}T00:00:00`);
       if (Number.isNaN(data.getTime())) return;
       if (data <= limiteDate) {
         const diffGiorni = Math.round((data - oggiDate) / 86400000);
-        scadenzeAlert.push({ nome: v.nome || 'Prodotto senza descrizione', lotto: v.lotto || '', scadenza, diffGiorni });
+        scadenzeAlert.push({ ricevimentoId: r.id, indiceVoce, nome: v.nome || 'Prodotto senza descrizione', lotto: v.lotto || '', scadenza, diffGiorni, ddt: r.numero_documento || '', fornitore: r.fornitore_nome || '' });
       }
     });
   });
@@ -115,6 +116,11 @@ export async function renderOggi(container, profilo, vaiA) {
             <div style="font-size:13px; font-weight:600;">${escapeHtml(p.nome)}</div>
             <div style="font-size:12px; color:${p.diffGiorni < 0 ? '#b91c1c' : '#92400e'}; margin-top:2px;">
               ${p.diffGiorni < 0 ? `SCADUTO il ${formatDataBreve(p.scadenza)}` : p.diffGiorni === 0 ? `SCADENZA OGGI · ${formatDataBreve(p.scadenza)}` : `Scade il ${formatDataBreve(p.scadenza)} · tra ${p.diffGiorni} giorni`}${p.lotto ? ` · Lotto ${escapeHtml(p.lotto)}` : ''}
+            </div>
+            <div style="font-size:11px; color:#64748b; margin-top:3px;">${p.ddt ? `DDT ${escapeHtml(p.ddt)}` : ''}${p.ddt && p.fornitore ? ' · ' : ''}${p.fornitore ? escapeHtml(p.fornitore) : ''}</div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:7px;">
+              <button type="button" class="btn btn-secondary btn-prodotto-utilizzato" data-ricevimento="${escapeHtml(p.ricevimentoId)}" data-voce="${p.indiceVoce}" style="padding:6px 9px; font-size:11px;">Prodotto utilizzato</button>
+              <button type="button" class="btn btn-danger btn-prodotto-eliminato" data-ricevimento="${escapeHtml(p.ricevimentoId)}" data-voce="${p.indiceVoce}" style="padding:6px 9px; font-size:11px;">Elimina prodotto</button>
             </div>
           </div>
         `).join('')}
@@ -167,6 +173,24 @@ export async function renderOggi(container, profilo, vaiA) {
 
   const apriRicevimento = container.querySelector('#oggi-apri-ricevimento');
   if (apriRicevimento) apriRicevimento.addEventListener('click', () => vaiA('ricevimento'));
+
+
+  const aggiornaStatoProdotto = async (btn, stato) => {
+    try {
+      const ricevimentiAggiornati = await leggiTutti('ricevimenti');
+      const ricevimento = ricevimentiAggiornati.find((r) => r.id === btn.dataset.ricevimento);
+      const indice = Number(btn.dataset.voce);
+      if (!ricevimento || !Array.isArray(ricevimento.voci) || !ricevimento.voci[indice]) { alert('Prodotto non trovato.'); return; }
+      const voci = ricevimento.voci.map((v, i) => i === indice ? { ...v, stato, stato_data: oggi } : v);
+      await aggiorna('ricevimenti', ricevimento.id, { voci });
+      await renderOggi(container, profilo, vaiA);
+    } catch (err) { console.error(err); alert(stato === 'utilizzato' ? 'Errore durante la registrazione del prodotto utilizzato.' : 'Errore durante la registrazione dello smaltimento.'); }
+  };
+
+  container.querySelectorAll('.btn-prodotto-utilizzato').forEach((btn) => btn.addEventListener('click', () => aggiornaStatoProdotto(btn, 'utilizzato')));
+  container.querySelectorAll('.btn-prodotto-eliminato').forEach((btn) => btn.addEventListener('click', () => {
+    if (window.confirm('Confermi che il prodotto è stato eliminato?')) aggiornaStatoProdotto(btn, 'eliminato');
+  }));
 
   container.querySelectorAll('[data-vai]').forEach((el) => {
     el.addEventListener('click', () => vaiA(el.dataset.vai));
