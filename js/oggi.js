@@ -1,4 +1,5 @@
-import { leggiTutti, aggiungi, inizioEFineGiorno, oggiISO, where, orderBy } from './store.js';
+import { leggiTutti, aggiungi, inizioEFineGiorno, oggiISO, where } from './store.js';
+import { auth } from './firebase.js';
 
 const GIORNI_ALERT_SCADENZA = 3;
 
@@ -690,7 +691,7 @@ export async function renderOggi(container, profilo, vaiA) {
           indice_voce: indiceVoce,
           stato,
           data: oggi,
-          registrato_da: profilo.id
+          registrato_da: auth.currentUser?.uid
         });
 
         await renderOggi(
