@@ -1,4 +1,4 @@
-import { leggiTutti, aggiorna, inizioEFineGiorno, oggiISO, where, orderBy } from './store.js';
+import { leggiTutti, aggiungi, inizioEFineGiorno, oggiISO, where, orderBy } from './store.js';
 
 const GIORNI_ALERT_SCADENZA = 3;
 
@@ -82,6 +82,8 @@ export async function renderOggi(container, profilo, vaiA) {
   const conservazioniOggi = await leggiTutti('conservazioni', [where('data_riferimento', '==', oggi)]);
 
   const ricevimenti = await leggiTutti('ricevimenti');
+  const statiProdotti = await leggiTutti('stati_prodotti');
+  const statiSet = new Set(statiProdotti.map((s) => `${s.ricevimento_id}_${s.indice_voce}`));
   const oggiDate = new Date(`${oggi}T00:00:00`);
   const limiteDate = new Date(oggiDate);
   limiteDate.setDate(limiteDate.getDate() + GIORNI_ALERT_SCADENZA);
@@ -89,7 +91,7 @@ export async function renderOggi(container, profilo, vaiA) {
 
   ricevimenti.forEach((r) => {
     (Array.isArray(r.voci) ? r.voci : []).forEach((v, indiceVoce) => {
-      if (v.stato === 'utilizzato' || v.stato === 'eliminato') return;
+      if (statiSet.has(`${r.id}_${indiceVoce}`)) return;
       const scadenza = dataScadenzaISO(v.scadenza);
       if (!scadenza) return;
       const data = new Date(`${scadenza}T00:00:00`);
@@ -177,14 +179,22 @@ export async function renderOggi(container, profilo, vaiA) {
 
   const aggiornaStatoProdotto = async (btn, stato) => {
     try {
-      const ricevimentiAggiornati = await leggiTutti('ricevimenti');
-      const ricevimento = ricevimentiAggiornati.find((r) => r.id === btn.dataset.ricevimento);
-      const indice = Number(btn.dataset.voce);
-      if (!ricevimento || !Array.isArray(ricevimento.voci) || !ricevimento.voci[indice]) { alert('Prodotto non trovato.'); return; }
-      const voci = ricevimento.voci.map((v, i) => i === indice ? { ...v, stato, stato_data: oggi } : v);
-      await aggiorna('ricevimenti', ricevimento.id, { voci });
+      const ricevimentoId = btn.dataset.ricevimento;
+      const indiceVoce = Number(btn.dataset.voce);
+      await aggiungi('stati_prodotti', {
+        ricevimento_id: ricevimentoId,
+        indice_voce: indiceVoce,
+        stato,
+        data: oggi,
+        registrato_da: profilo.id
+      });
       await renderOggi(container, profilo, vaiA);
-    } catch (err) { console.error(err); alert(stato === 'utilizzato' ? 'Errore durante la registrazione del prodotto utilizzato.' : 'Errore durante la registrazione dello smaltimento.'); }
+    } catch (err) {
+      console.error(err);
+      alert(stato === 'utilizzato'
+        ? 'Errore durante la registrazione del prodotto utilizzato.'
+        : 'Errore durante la registrazione dello smaltimento.');
+    }
   };
 
   container.querySelectorAll('.btn-prodotto-utilizzato').forEach((btn) => btn.addEventListener('click', () => aggiornaStatoProdotto(btn, 'utilizzato')));
