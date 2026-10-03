@@ -78,6 +78,14 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Stato operativo dei prodotti: consente di chiudere un alert
+    // senza modificare o cancellare il registro originale del ricevimento.
+    match /stati_prodotti/{id} {
+      allow read: if autenticato();
+      allow create: if autenticato() && request.resource.data.registrato_da == request.auth.uid;
+      allow update, delete: if false;
+    }
+
     match /prodotti/{id} {
       allow read: if autenticato();
       allow write: if autenticato();
