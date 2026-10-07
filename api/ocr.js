@@ -70,7 +70,7 @@ Restituisci ESCLUSIVAMENTE un oggetto JSON valido, senza markdown e senza commen
     let lastError = 'Servizio Gemini temporaneamente non disponibile.';
 
     for (const modello of modelli) {
-      for (let tentativo = 0; tentativo < 3; tentativo++) {
+      for (let tentativo = 0; tentativo < 2; tentativo++) {
         try {
           const response = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/${modello}:generateContent?key=${apiKey}`,
@@ -103,8 +103,8 @@ Restituisci ESCLUSIVAMENTE un oggetto JSON valido, senza markdown e senza commen
 
           if (response.status !== 503 && response.status !== 429) break;
 
-          if (tentativo < 2) {
-            const attesa = 1200 * Math.pow(2, tentativo);
+          if (tentativo < 1) {
+            const attesa = 700 * (tentativo + 1);
             await new Promise(resolve => setTimeout(resolve, attesa));
           }
         } catch (err) {
