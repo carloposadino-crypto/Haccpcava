@@ -193,11 +193,28 @@ export async function renderRicezioniPage(container, profilo) {
     fileInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      mostraStato('📷 Lettura della bolla in corso…');
+      mostraStato('📷 Preparazione foto…');
       const reader = new FileReader();
       reader.onload = async () => {
         try {
-          const resp = await fetch('/api/ocr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageBase64: reader.result }) });
+          const riduciFoto = (dataUrl) => new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+              const maxLato = 1600;
+              const scala = Math.min(1, maxLato / Math.max(img.naturalWidth, img.naturalHeight));
+              const canvas = document.createElement('canvas');
+              canvas.width = Math.max(1, Math.round(img.naturalWidth * scala));
+              canvas.height = Math.max(1, Math.round(img.naturalHeight * scala));
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+              resolve(canvas.toDataURL('image/jpeg', 0.78));
+            };
+            img.onerror = () => resolve(dataUrl);
+            img.src = dataUrl;
+          });
+          const fotoOttimizzata = await riduciFoto(reader.result);
+          mostraStato('📷 Lettura della bolla in corso…');
+          const resp = await fetch('/api/ocr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageBase64: fotoOttimizzata }) });
           const result = await resp.json();
           if (result.error) { alert(result.error); nascondiStato(); return; }
           const data = result.data || {};
