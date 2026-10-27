@@ -39,10 +39,10 @@ function analizza(r) {
   return {voce,prod,allergeni:[...a],prezzoKg:voce?.prezzo_kg!=null?Number(voce.prezzo_kg):null};
 }
 function parseTestoRicetta(testo) {
-  const result = { nome:'', codice:'', porzioni:'', ingredienti:[], procedimento:'', pericoli:'', misureControllo:'', ccp:'', note:'' };
+  const result = { nome:'', codice:'', porzioni:'', ingredienti:'', procedimento:'', pericoli:'', misureControllo:'', ccp:'', note:'' };
   const lines = String(testo || '').replace(/\\r/g, '').split('\\n');
   let section = '';
-  const clean = s => String(s || '').replace(/^\s*#+\s*/, '').replace(/^\s*\d+[.)]\s*/, '').replace(/^\s*[-•]\s*/, '').replace(/^\s*\*{1,2}|\*{1,2}\s*$/g, '').trim();
+  const clean = s => String(s || '').replace(/^\s*#+\s*/, '').replace(/^\s*\*{1,2}|\*{1,2}\s*$/g, '').replace(/^\s*\d+[.)]\s*/, '').replace(/^\s*[-•]\s*/, '').trim();
   const fieldFor = label => {
     const x = clean(label).replace(/:$/, '').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\\s+/g, ' ').trim();
     if (/^(nome preparazione|nome ricetta|nome)$/.test(x)) return 'nome';
