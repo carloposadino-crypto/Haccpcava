@@ -40,18 +40,18 @@ function analizza(r) {
 }
 function parseTestoRicetta(testo) {
   const result = { nome:'', codice:'', porzioni:'', ingredienti:'', procedimento:'', pericoli:'', misureControllo:'', ccp:'', note:'' };
-  const lines = String(testo || '').replace(/\\r/g, '').split('\\n');
+  const lines = String(testo || '').replace(/\r/g, '').split('\n');
   let section = '';
   const clean = s => String(s || '').replace(/^\s*#+\s*/, '').replace(/^\s*\*{1,2}|\*{1,2}\s*$/g, '').replace(/^\s*\d+[.)]\s*/, '').replace(/^\s*[-•]\s*/, '').trim();
   const fieldFor = label => {
-    const x = clean(label).replace(/:$/, '').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\\s+/g, ' ').trim();
+    const x = clean(label).replace(/:$/, '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
     if (/^(nome preparazione|nome ricetta|nome)$/.test(x)) return 'nome';
     if (/^(codice|codice ricetta)$/.test(x)) return 'codice';
     if (/^(numero porzioni|porzioni|resa)$/.test(x)) return 'porzioni';
     if (/^(ingredienti|ingredienti grammi|ingredienti sempre in grammi)$/.test(x)) return 'ingredienti';
     if (/^(processo|processo procedimento|procedimento|procedura)$/.test(x)) return 'procedimento';
     if (/^(pericoli|pericoli individuati|pericoli identificati)$/.test(x)) return 'pericoli';
-    if (/^(misure|misure di controllo|misure controllo|misure preventive)$/.test(x)) return 'misureControllo';
+    if (/^(misure|misure di controllo|misure controllo|misure preventive|misure di controllo individuate)$/.test(x)) return 'misureControllo';
     if (/^(ccp|punti critici di controllo)$/.test(x)) return 'ccp';
     if (/^(note|note haccp)$/.test(x)) return 'note';
     return '';
@@ -59,20 +59,20 @@ function parseTestoRicetta(testo) {
   for (const raw of lines) {
     const line = clean(raw);
     if (!line) continue;
-    const inline = line.match(/^([^:]{2,50}):\\s*(.*)$/);
+    const inline = line.match(/^([^:]{2,70}):\s*(.*)$/);
     const key = fieldFor(inline ? inline[1] : line);
     if (key) {
       section = key;
       const value = inline ? inline[2].trim() : '';
-      if (value) result[key] = key === 'ingredienti' ? value + '\\n' : value;
+      if (value) result[key] = key === 'ingredienti' ? value + '\n' : value;
       continue;
     }
     if (!section) continue;
-    result[section] += (result[section] ? '\\n' : '') + line;
+    result[section] += (result[section] ? '\n' : '') + line;
   }
   result.nome = String(result.nome || '').trim();
   result.codice = String(result.codice || '').trim();
-  const p = String(result.porzioni || '').match(/\\d+/);
+  const p = String(result.porzioni || '').match(/\d+/);
   result.porzioni = p ? p[0] : '';
   result.ingredienti = parseIngredientiTesto(String(result.ingredienti || '').trim())
     .filter(r => r.nome && !/^da definire$/i.test(r.nome))
