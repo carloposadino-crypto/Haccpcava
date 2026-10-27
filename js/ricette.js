@@ -42,7 +42,7 @@ function parseTestoRicetta(testo) {
   const result = { nome:'', codice:'', porzioni:'', ingredienti:[], procedimento:'', pericoli:'', misureControllo:'', ccp:'', note:'' };
   const lines = String(testo || '').replace(/\\r/g, '').split('\\n');
   let section = '';
-  const clean = s => String(s || '').replace(/^\\s*#+\\s*/, '').replace(/^\\s*[-•]\\s*/, '').replace(/^\\s*\\*{1,2}|\\*{1,2}\\s*$/g, '').trim();
+  const clean = s => String(s || '').replace(/^\s*#+\s*/, '').replace(/^\s*\d+[.)]\s*/, '').replace(/^\s*[-•]\s*/, '').replace(/^\s*\*{1,2}|\*{1,2}\s*$/g, '').trim();
   const fieldFor = label => {
     const x = clean(label).replace(/:$/, '').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\\s+/g, ' ').trim();
     if (/^(nome preparazione|nome ricetta|nome)$/.test(x)) return 'nome';
@@ -85,7 +85,7 @@ function parseIngredientiTesto(testo) {
   if(!testo)return[rigaVuota()];
   const out=String(testo).split('\n').map(x=>x.trim()).filter(Boolean).map(line=>{
     const m=line.match(/^(.+?)(?:\s*:\s*|\s+-\s*)([\d.,]+)\s*(kg|g|ml|l)?\s*$/i);
-    if(!m){const q=line.match(/^(.+?)(?:\s*:\s*|\s+-\s*)q\.?b\.?$/i);return q?{nome:q[1].trim(),grammi:'',conversione:'q.b. — quantità da definire'}:{nome:line.replace(/^[-•]\s*/,''),grammi:'',conversione:'Da verificare'};}
+    if(!m){const indef=line.match(/^(.+?)(?:\s*:\s*|\s+-\s*)da definire$/i);if(indef)return{nome:indef[1].trim(),grammi:'',conversione:'Quantità da definire'};const q=line.match(/^(.+?)(?:\s*:\s*|\s+-\s*)q\.?b\.?$/i);return q?{nome:q[1].trim(),grammi:'',conversione:'q.b. — quantità da definire'}:{nome:line.replace(/^[-•]\s*/,''),grammi:'',conversione:'Da verificare'};}
     const n=num(m[2]), u=(m[3]||'g').toLowerCase(); let g=n;
     if(u==='kg'||u==='l')g=n*1000; if(u==='ml')g=n;
     return {nome:m[1].trim(),grammi:Number.isFinite(g)?String(g).replace(/\.0$/,''):'',conversione:u!=='g'?`${m[2]} ${u} → ${g} g`:''};
