@@ -38,6 +38,49 @@ function analizza(r) {
   (prod?.allergeni||[]).forEach(x=>a.add(x.allergene||x));
   return {voce,prod,allergeni:[...a],prezzoKg:voce?.prezzo_kg!=null?Number(voce.prezzo_kg):null};
 }
+function parseTestoRicetta(testo) {
+  const result = { nome:'', codice:'', porzioni:'', ingredienti:[], procedimento:'', pericoli:'', misureControllo:'', ccp:'', note:'' };
+  const lines = String(testo || '').replace(/\\r/g, '').split('\\n');
+  let section = '';
+  const clean = s => String(s || '').replace(/^\\s*#+\\s*/, '').replace(/^\\s*[-•]\\s*/, '').replace(/^\\s*\\*{1,2}|\\*{1,2}\\s*$/g, '').trim();
+  const fieldFor = label => {
+    const x = clean(label).replace(/:$/, '').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\\s+/g, ' ').trim();
+    if (/^(nome preparazione|nome ricetta|nome)$/.test(x)) return 'nome';
+    if (/^(codice|codice ricetta)$/.test(x)) return 'codice';
+    if (/^(numero porzioni|porzioni|resa)$/.test(x)) return 'porzioni';
+    if (/^(ingredienti|ingredienti grammi|ingredienti sempre in grammi)$/.test(x)) return 'ingredienti';
+    if (/^(processo|processo procedimento|procedimento|procedura)$/.test(x)) return 'procedimento';
+    if (/^(pericoli|pericoli individuati|pericoli identificati)$/.test(x)) return 'pericoli';
+    if (/^(misure|misure di controllo|misure controllo|misure preventive)$/.test(x)) return 'misureControllo';
+    if (/^(ccp|punti critici di controllo)$/.test(x)) return 'ccp';
+    if (/^(note|note haccp)$/.test(x)) return 'note';
+    return '';
+  };
+  for (const raw of lines) {
+    const line = clean(raw);
+    if (!line) continue;
+    const inline = line.match(/^([^:]{2,50}):\\s*(.*)$/);
+    const key = fieldFor(inline ? inline[1] : line);
+    if (key) {
+      section = key;
+      const value = inline ? inline[2].trim() : '';
+      if (value) result[key] = key === 'ingredienti' ? value + '\\n' : value;
+      continue;
+    }
+    if (!section) continue;
+    result[section] += (result[section] ? '\\n' : '') + line;
+  }
+  result.nome = String(result.nome || '').trim();
+  result.codice = String(result.codice || '').trim();
+  const p = String(result.porzioni || '').match(/\\d+/);
+  result.porzioni = p ? p[0] : '';
+  result.ingredienti = parseIngredientiTesto(String(result.ingredienti || '').trim())
+    .filter(r => r.nome && !/^da definire$/i.test(r.nome))
+    .map(r => ({ nome:r.nome, grammi:r.grammi, conversione:r.conversione || '' }));
+  for (const k of ['procedimento','pericoli','misureControllo','ccp','note']) result[k] = String(result[k] || '').trim();
+  return result;
+}
+
 function parseIngredientiTesto(testo) {
   if(!testo)return[rigaVuota()];
   const out=String(testo).split('\n').map(x=>x.trim()).filter(Boolean).map(line=>{
@@ -67,6 +110,13 @@ export async function renderRicettePage(container, profilo) {
       <button type="button" class="btn btn-secondary" id="sc-btn-pdf" style="margin-bottom:10px;">📄 PDF</button>
       <div class="form-row"><input type="url" id="sc-url-input" placeholder="https://sito-ricette.it/ricetta..."><button type="button" class="btn btn-secondary" id="sc-btn-url" style="flex:0 0 auto;">🔗 Importa</button></div>
       <div id="sc-import-status" style="display:none;font-size:12px;color:#2b5c3a;font-weight:bold;text-align:center;margin-top:6px;"></div>
+    </div>
+    <div class="list-card" style="border:1px solid #93c5fd;background:#eff6ff;">
+      <div style="font-size:13px;font-weight:bold;color:#1d4ed8;margin-bottom:6px;">📋 Incolla ricetta da ChatGPT</div>
+      <div style="font-size:12px;color:#475569;margin-bottom:10px;">Incolla qui la ricetta completa con i campi Nome, Codice, Porzioni, Ingredienti, Procedimento, Pericoli, Misure di controllo, CCP e Note. L'app compilerà la scheda senza salvarla automaticamente.</div>
+      <textarea id="sc-testo-ricetta" rows="8" placeholder="Incolla qui il testo della ricetta…"></textarea>
+      <button type="button" class="btn btn-primary btn-block" id="sc-importa-testo" style="margin-top:8px;">Importa e compila i campi</button>
+      <div style="font-size:11px;color:#64748b;margin-top:6px;">Dopo l'importazione controlla tutti i dati e conferma la verifica prima di salvare.</div>
     </div>
     <div id="sc-verifica" class="list-card" style="display:none;border:1px solid #f59e0b;background:#fffbeb;"></div>
     <div class="list-card">
@@ -115,6 +165,27 @@ export async function renderRicettePage(container, profilo) {
   container.querySelector('#sc-porzioni').addEventListener('input',costo);container.querySelector('#sc-prezzo-vendita').addEventListener('input',costo);container.querySelector('#sc-annulla-modifica').addEventListener('click',resetForm);
   const status=container.querySelector('#sc-import-status'), show=m=>{status.style.display='block';status.textContent=m}, hide=()=>status.style.display='none';
   const applica=data=>{container.querySelector('#sc-nome').value=data.nome||data.titolo||'';if(data.porzioni)container.querySelector('#sc-porzioni').value=data.porzioni;righeCorrenti=Array.isArray(data.ingredienti)?data.ingredienti.map(i=>({nome:i.nome||'',grammi:i.grammi??'',conversione:i.conversione||''})):parseIngredientiTesto(data.ingredienti||data.ingredientiText||'');container.querySelector('#sc-processo').value=data.procedimento||data.procedimentoNumerato||'';container.querySelector('#sc-note').value=data.haccpNote||data.noteHaccp||data.haccp||'';container.querySelector('#sc-pericoli').value=data.pericoli||'';container.querySelector('#sc-misure').value=data.misureControllo||'';container.querySelector('#sc-ccp').value=data.ccp||'';importazioneDaVerificare=true;importazioneVerificata=false;stato();container.querySelector('#sc-verifica').scrollIntoView({behavior:'smooth',block:'center'});};
+  container.querySelector('#sc-importa-testo').addEventListener('click',()=>{
+    const testo=container.querySelector('#sc-testo-ricetta').value.trim();
+    if(!testo)return alert('Incolla prima il testo della ricetta.');
+    const data=parseTestoRicetta(testo);
+    if(!data.nome)return alert('Non trovo il campo “Nome preparazione”. Usa i titoli dei campi indicati sopra e riprova.');
+    container.querySelector('#sc-nome').value=data.nome;
+    container.querySelector('#sc-codice').value=data.codice;
+    if(data.porzioni)container.querySelector('#sc-porzioni').value=data.porzioni;
+    righeCorrenti=data.ingredienti.length?data.ingredienti:[rigaVuota()];
+    container.querySelector('#sc-processo').value=data.procedimento;
+    container.querySelector('#sc-pericoli').value=data.pericoli;
+    container.querySelector('#sc-misure').value=data.misureControllo;
+    container.querySelector('#sc-ccp').value=data.ccp;
+    container.querySelector('#sc-note').value=data.note;
+    importazioneDaVerificare=true;
+    importazioneVerificata=false;
+    stato();
+    show('Testo importato: controlla tutti i campi e conferma la verifica prima di salvare.');
+    container.querySelector('#sc-verifica').scrollIntoView({behavior:'smooth',block:'center'});
+    container.querySelector('#sc-form-title').scrollIntoView({behavior:'smooth',block:'start'});
+  });
   container.querySelector('#sc-btn-url').addEventListener('click',async()=>{const url=container.querySelector('#sc-url-input').value.trim();if(!url)return alert('Inserisci un link valido.');show('⚙️ Lettura della ricetta in corso…');try{const r=await fetch('/api/parse-recipe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})}),d=await r.json();if(d.error)throw new Error(d.error);applica(d);hide();}catch(e){console.error(e);alert(e.message||'Errore di importazione.');hide();}});
   const input=container.querySelector('#sc-file-input');container.querySelector('#sc-btn-foto').addEventListener('click',()=>input.click());container.querySelector('#sc-btn-pdf').addEventListener('click',()=>input.click());input.addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const pdf=f.type==='application/pdf'||f.name.toLowerCase().endsWith('.pdf');show(pdf?'📄 Lettura del PDF in corso…':'📷 Lettura dell’immagine in corso…');const rd=new FileReader();rd.onload=async()=>{try{const r=await fetch('/api/parse-recipe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({file:rd.result,mimeType:f.type||(pdf?'application/pdf':'image/jpeg')})}),d=await r.json();if(d.error)throw new Error(d.error);applica(d);hide();}catch(e){console.error(e);alert(e.message||'Errore durante la lettura del file.');hide();}};rd.readAsDataURL(f);});
   container.querySelector('#sc-salva').addEventListener('click',async e=>{const nome=container.querySelector('#sc-nome').value.trim();if(!nome)return alert('Inserisci il nome della preparazione.');if(importazioneDaVerificare&&!importazioneVerificata)return alert('Prima di salvare devi confermare la verifica dell’importazione.');const righe=righeCorrenti.filter(r=>r.nome.trim()),c=costo(),a=allergeni();if(righe.some(r=>!Number.isFinite(num(r.grammi)))&&!confirm('Una o più righe non hanno una grammatura numerica. Vuoi salvare comunque?'))return;e.currentTarget.disabled=true;const dati={nome,codice:container.querySelector('#sc-codice').value,porzioni:c.por,stato:'bozza',contenuto:{ingredienti:righe.map(r=>({nome:r.nome.trim(),grammi:r.grammi,conversione:r.conversione||''})),allergeni:a,processo:container.querySelector('#sc-processo').value,pericoli:container.querySelector('#sc-pericoli').value,misure_controllo:container.querySelector('#sc-misure').value,ccp:container.querySelector('#sc-ccp').value,note:container.querySelector('#sc-note').value},costo_totale:Math.round(c.totale*100)/100,costo_a_porzione:Math.round(c.cp*100)/100,prezzo_vendita:c.pv>0?Math.round(c.pv*100)/100:null,food_cost_percentuale:c.fc!=null?Math.round(c.fc*10)/10:null,autore_id:profilo.id,modificato_da:profilo.id};try{if(modificaId){await aggiorna('schede_haccp',modificaId,{...dati,modificato_il:new Date()});}else{await aggiungi('schede_haccp',dati,'creato_il');}renderRicettePage(container,profilo);}catch(err){console.error(err);alert('Errore durante il salvataggio della ricetta.');e.currentTarget.disabled=false;}});
