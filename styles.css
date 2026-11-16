@@ -268,3 +268,49 @@ input:focus, select:focus, textarea:focus {
   .no-print { display: none !important; }
   .print-only { display: block !important; }
 }
+
+
+/* Stampa dello Storico HACCP: prevale sulle regole di stampa delle etichette. */
+@media print {
+  body.printing-history,
+  body.printing-history * {
+    visibility: visible !important;
+  }
+
+  body.printing-history {
+    background: #fff !important;
+    color: #000 !important;
+    padding: 0 !important;
+  }
+
+  body.printing-history .no-print,
+  body.printing-history .bottom-nav,
+  body.printing-history .app-header {
+    display: none !important;
+  }
+
+  body.printing-history .print-only {
+    display: block !important;
+  }
+
+  body.printing-history #app-container,
+  body.printing-history #app,
+  body.printing-history #st-risultati {
+    max-width: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  body.printing-history .list-card {
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+    break-inside: avoid;
+  }
+
+  body.printing-history h2,
+  body.printing-history h3 {
+    color: #000 !important;
+  }
+}
