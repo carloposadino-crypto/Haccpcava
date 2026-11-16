@@ -94,7 +94,14 @@ export async function renderStoricoPage(container) {
     container.querySelector('#st-tutto-periodo').textContent = senzaLimiteDiData ? 'Torna a filtrare per data' : "Mostra tutto l'archivio (nessun limite di data)";
     applicaFiltri();
   });
-  container.querySelector('#st-stampa').addEventListener('click', () => window.print());
+  container.querySelector('#st-stampa').addEventListener('click', () => {
+    document.body.classList.add('printing-history');
+    const cleanup = () => document.body.classList.remove('printing-history');
+    window.addEventListener('afterprint', cleanup, { once: true });
+    window.print();
+    // Fallback per browser mobile che non inviano afterprint in modo affidabile.
+    setTimeout(cleanup, 60000);
+  });
 
   function applicaFiltri() {
     const da = senzaLimiteDiData ? null : new Date(container.querySelector('#st-da').value + 'T00:00:00');
