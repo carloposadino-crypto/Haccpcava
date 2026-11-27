@@ -214,9 +214,28 @@ export async function renderRicezioniPage(container, profilo) {
           });
           const fotoOttimizzata = await riduciFoto(reader.result);
           mostraStato('📷 Lettura della bolla in corso…');
-          const resp = await fetch('/api/ocr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageBase64: fotoOttimizzata }) });
-          const result = await resp.json();
-          if (result.error) { alert(result.error); nascondiStato(); return; }
+          let resp;
+          try {
+            resp = await fetch('/api/ocr', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ imageBase64: fotoOttimizzata })
+            });
+          } catch (erroreRete) {
+            throw new Error('Non riesco a raggiungere il servizio OCR di Vercel. Controlla la connessione e riprova. Dettaglio: ' + (erroreRete?.message || 'errore di rete'));
+          }
+
+          let result;
+          try {
+            result = await resp.json();
+          } catch (erroreRisposta) {
+            throw new Error('Il servizio OCR ha risposto con un formato non valido (HTTP ' + resp.status + '). Verifica che la funzione /api/ocr sia attiva su Vercel.');
+          }
+
+          if (!resp.ok && !result.error) {
+            throw new Error('Il servizio OCR ha restituito un errore HTTP ' + resp.status + '.');
+          }
+          if (result.error) { throw new Error(result.error); }
           const data = result.data || {};
           if (data.fornitore) container.querySelector('#rc-fornitore').value = data.fornitore;
           if (data.numeroDocumento) container.querySelector('#rc-numero-doc').value = data.numeroDocumento;
@@ -226,7 +245,11 @@ export async function renderRicezioniPage(container, profilo) {
             disegnaRighe();
           }
           mostraStato(result.isDemo ? '⚠️ Modalità demo: attiva GEMINI_API_KEY su Vercel per la lettura reale.' : '✓ Documento letto. Controlla le descrizioni complete prima di registrare il ricevimento.');
-        } catch (err) { console.error(err); alert('Errore durante la lettura della foto.'); nascondiStato(); }
+        } catch (err) {
+          console.error('Errore lettura DDT:', err);
+          alert('Lettura DDT non riuscita: ' + (err?.message || 'errore imprevisto. Controlla la connessione e riprova.'));
+          nascondiStato();
+        }
       };
       reader.readAsDataURL(file);
     });
