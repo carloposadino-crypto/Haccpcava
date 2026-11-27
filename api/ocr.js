@@ -1,6 +1,8 @@
 // Legge una foto di un documento di trasporto (DDT/bolla) e restituisce
 // fornitore, numero documento, data e l'elenco completo dei prodotti riconosciuti,
 // usando Gemini Vision.
+module.exports.config = { api: { bodyParser: { sizeLimit: '8mb' } } };
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method !== 'POST') {
