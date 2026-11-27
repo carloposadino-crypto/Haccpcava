@@ -200,14 +200,14 @@ export async function renderRicezioniPage(container, profilo) {
           const riduciFoto = (dataUrl) => new Promise((resolve) => {
             const img = new Image();
             img.onload = () => {
-              const maxLato = 1600;
+              const maxLato = 1400;
               const scala = Math.min(1, maxLato / Math.max(img.naturalWidth, img.naturalHeight));
               const canvas = document.createElement('canvas');
               canvas.width = Math.max(1, Math.round(img.naturalWidth * scala));
               canvas.height = Math.max(1, Math.round(img.naturalHeight * scala));
               const ctx = canvas.getContext('2d');
               ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-              resolve(canvas.toDataURL('image/jpeg', 0.78));
+              resolve(canvas.toDataURL('image/jpeg', 0.65));
             };
             img.onerror = () => resolve(dataUrl);
             img.src = dataUrl;
